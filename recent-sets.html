@@ -6,7 +6,7 @@
     <style>
       @font-face {
         font-family: "Coolvetica";
-        src: url("fonts/Coolvetica Rg.otf") format("opentype");
+        src: url("fonts/Coolvetica-Rg.otf") format("opentype");
         font-weight: normal;
         font-style: normal;
       }
@@ -17,6 +17,8 @@
         background: transparent;
         font-family: "Coolvetica", Arial, sans-serif;
         color: #fff;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       .overlay {
         width: 100%;
@@ -31,8 +33,6 @@
         font-size: 24px;
         margin-bottom: 8px;
         text-align: center;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
       }
       .set {
         display: flex;
@@ -85,22 +85,12 @@
       #configPanel.hidden {
         display: none;
       }
-      body,
-      .overlay,
-      .header,
-      .set,
-      .players,
-      .player,
-      .round {
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
     </style>
     <script src="recent-sets-config.js"></script>
   </head>
   <body>
     <div class="overlay">
-      <form id="configPanel" class="config" onsubmit="startOverlay(event)">
+      <form id="configPanel" class="config">
         <div id="tokenField" style="display: none">
           <input id="tokenInput" placeholder="Paste Start.gg API Token" /><br />
         </div>
@@ -116,31 +106,49 @@
       let lastSetIds = new Set();
       let pollingInterval;
 
-      // Check for token from config.js or localStorage
+      // Parse query params
+      const params = new URLSearchParams(window.location.search);
       let authToken =
-        window.STARTGG_TOKEN || localStorage.getItem("startggToken") || "";
+        params.get("token") ||
+        params.get("t") ||
+        window.STARTGG_TOKEN ||
+        localStorage.getItem("startggToken") ||
+        "";
+      let eventUrl =
+        params.get("url") || params.get("u") || window.STARTGG_URL || "";
 
+      // Show token input if no token
       if (!authToken) {
         document.getElementById("tokenField").style.display = "block";
       }
 
+      // Auto-start if both values exist
+      if (authToken && eventUrl) {
+        document.getElementById("configPanel").classList.add("hidden");
+        startOverlay();
+      }
+
+      document
+        .getElementById("configPanel")
+        .addEventListener("submit", startOverlay);
+
       async function fetchSets(slug) {
         const query = `
-    query EventSets($slug: String!) {
-      event(slug: $slug) {
-        sets(perPage: 5, page: 1, sortType: RECENT) {
-          nodes {
-            id
-            fullRoundText
-            slots {
-              entrant { name }
-              standing { stats { score { value } } }
+          query EventSets($slug: String!) {
+            event(slug: $slug) {
+              sets(perPage: 5, page: 1, sortType: RECENT) {
+                nodes {
+                  id
+                  fullRoundText
+                  slots {
+                    entrant { name }
+                    standing { stats { score { value } } }
+                  }
+                }
+              }
             }
           }
-        }
-      }
-    }
-  `;
+        `;
         const res = await fetch(API_URL, {
           method: "POST",
           headers: {
@@ -166,18 +174,22 @@
           const div = document.createElement("div");
           div.className = "set" + (isNew ? " new" : "");
           div.innerHTML = `
-      <div class="players">
-        <div class="player">
-          <span>${set.slots[0]?.entrant?.name || "TBD"}</span>
-          <span>${set.slots[0]?.standing?.stats?.score?.value ?? "-"}</span>
-        </div>
-        <div class="player">
-          <span>${set.slots[1]?.entrant?.name || "TBD"}</span>
-          <span>${set.slots[1]?.standing?.stats?.score?.value ?? "-"}</span>
-        </div>
-      </div>
-      <div class="round">${set.fullRoundText || ""}</div>
-    `;
+            <div class="players">
+              <div class="player">
+                <span>${set.slots[0]?.entrant?.name || "TBD"}</span>
+                <span>${
+                  set.slots[0]?.standing?.stats?.score?.value ?? "-"
+                }</span>
+              </div>
+              <div class="player">
+                <span>${set.slots[1]?.entrant?.name || "TBD"}</span>
+                <span>${
+                  set.slots[1]?.standing?.stats?.score?.value ?? "-"
+                }</span>
+              </div>
+            </div>
+            <div class="round">${set.fullRoundText || ""}</div>
+          `;
           container.appendChild(div);
           if (isNew) lastSetIds.add(set.id);
         });
@@ -198,7 +210,7 @@
       }
 
       function startOverlay(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
 
         if (!authToken) {
           authToken = document.getElementById("tokenInput").value.trim();
@@ -209,16 +221,15 @@
           localStorage.setItem("startggToken", authToken);
         }
 
-        let url =
-          window.STARTGG_URL ||
-          document.getElementById("urlInput").value.trim();
-
-        if (!url) {
-          alert("Please enter a Start.gg event URL.");
-          return;
+        if (!eventUrl) {
+          eventUrl = document.getElementById("urlInput").value.trim();
+          if (!eventUrl) {
+            alert("Please enter a Start.gg event URL.");
+            return;
+          }
         }
 
-        const slug = extractSlugFromUrl(url);
+        const slug = extractSlugFromUrl(eventUrl);
         if (!slug) return;
 
         document.getElementById("configPanel").classList.add("hidden");
