@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Start.gg Bracket Overlay</title>
+    <style>
+      @font-face {
+        font-family: "Coolvetica";
+        src: url("fonts/Coolvetica Rg.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-family: "Coolvetica", Arial, sans-serif;
+        color: #fff;
+      }
+      .overlay {
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 12px;
+        font-size: 20px;
+      }
+      .header {
+        font-weight: bold;
+        font-size: 24px;
+        margin-bottom: 8px;
+        text-align: center;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .set {
+        display: flex;
+        flex-direction: column;
+        margin: 8px 0;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        transition: background 0.3s;
+      }
+      .set.new {
+        background: rgba(0, 255, 0, 0.3);
+      }
+      .players {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+      .player {
+        display: flex;
+        justify-content: space-between;
+        width: 48%;
+      }
+      .round {
+        text-align: center;
+        font-size: 14px;
+        opacity: 0.7;
+      }
+      .config {
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      input {
+        width: 80%;
+        padding: 6px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: none;
+        margin-bottom: 6px;
+      }
+      button {
+        padding: 6px 12px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: none;
+        background: #00bfff;
+        color: white;
+        cursor: pointer;
+      }
+      #configPanel.hidden {
+        display: none;
+      }
+      body,
+      .overlay,
+      .header,
+      .set,
+      .players,
+      .player,
+      .round {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+    </style>
+    <script src="recent-sets-config.js"></script>
+  </head>
+  <body>
+    <div class="overlay">
+      <form id="configPanel" class="config" onsubmit="startOverlay(event)">
+        <div id="tokenField" style="display: none">
+          <input id="tokenInput" placeholder="Paste Start.gg API Token" /><br />
+        </div>
+        <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
+        <button type="submit">Start</button>
+      </form>
+      <div class="header">Recent Sets</div>
+      <div id="setsContainer"></div>
+    </div>
+
+    <script>
+      const API_URL = "https://api.start.gg/gql/alpha";
+      let lastSetIds = new Set();
+      let pollingInterval;
+
+      // Check for token from config.js or localStorage
+      let authToken =
+        window.STARTGG_TOKEN || localStorage.getItem("startggToken") || "";
+
+      if (!authToken) {
+        document.getElementById("tokenField").style.display = "block";
+      }
+
+      async function fetchSets(slug) {
+        const query = `
+    query EventSets($slug: String!) {
+      event(slug: $slug) {
+        sets(perPage: 5, page: 1, sortType: RECENT) {
+          nodes {
+            id
+            fullRoundText
+            slots {
+              entrant { name }
+              standing { stats { score { value } } }
+            }
+          }
+        }
+      }
+    }
+  `;
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + authToken,
+          },
+          body: JSON.stringify({ query, variables: { slug } }),
+        });
+        const json = await res.json();
+        if (!json.data || json.errors) {
+          console.error("Error fetching sets:", json.errors || json);
+          return [];
+        }
+        return json.data.event?.sets?.nodes || [];
+      }
+
+      function renderSets(sets) {
+        const container = document.getElementById("setsContainer");
+        container.innerHTML = "";
+
+        sets.forEach((set) => {
+          const isNew = !lastSetIds.has(set.id);
+          const div = document.createElement("div");
+          div.className = "set" + (isNew ? " new" : "");
+          div.innerHTML = `
+      <div class="players">
+        <div class="player">
+          <span>${set.slots[0]?.entrant?.name || "TBD"}</span>
+          <span>${set.slots[0]?.standing?.stats?.score?.value ?? "-"}</span>
+        </div>
+        <div class="player">
+          <span>${set.slots[1]?.entrant?.name || "TBD"}</span>
+          <span>${set.slots[1]?.standing?.stats?.score?.value ?? "-"}</span>
+        </div>
+      </div>
+      <div class="round">${set.fullRoundText || ""}</div>
+    `;
+          container.appendChild(div);
+          if (isNew) lastSetIds.add(set.id);
+        });
+      }
+
+      function extractSlugFromUrl(url) {
+        const match = url.match(
+          /start\.gg\/tournament\/([^\/]+)\/event\/([^\/]+)/
+        );
+        if (match) {
+          return `tournament/${match[1]}/event/${match[2]}`;
+        } else {
+          alert(
+            "Could not extract event slug from URL. Make sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
+          );
+          return null;
+        }
+      }
+
+      function startOverlay(e) {
+        e.preventDefault();
+
+        if (!authToken) {
+          authToken = document.getElementById("tokenInput").value.trim();
+          if (!authToken) {
+            alert("Please enter your Start.gg API token.");
+            return;
+          }
+          localStorage.setItem("startggToken", authToken);
+        }
+
+        let url =
+          window.STARTGG_URL ||
+          document.getElementById("urlInput").value.trim();
+
+        if (!url) {
+          alert("Please enter a Start.gg event URL.");
+          return;
+        }
+
+        const slug = extractSlugFromUrl(url);
+        if (!slug) return;
+
+        document.getElementById("configPanel").classList.add("hidden");
+
+        if (pollingInterval) clearInterval(pollingInterval);
+        pollingInterval = setInterval(async () => {
+          const sets = await fetchSets(slug);
+          renderSets(sets);
+        }, 15000);
+
+        // Fetch immediately
+        (async () => {
+          const sets = await fetchSets(slug);
+          renderSets(sets);
+        })();
+      }
+    </script>
+  </body>
+</html>
