@@ -97,7 +97,7 @@
         <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
         <button type="submit">Start</button>
       </form>
-      <div class="header">Recent Sets</div>
+      <div class="header">Recent Results</div>
       <div id="setsContainer"></div>
     </div>
 
@@ -114,14 +114,14 @@
         window.STARTGG_TOKEN ||
         localStorage.getItem("startggToken") ||
         "";
-      let eventUrl =
-        params.get("url") || params.get("u") || window.STARTGG_URL || "";
 
       // Show token input if no token
       if (!authToken) {
         document.getElementById("tokenField").style.display = "block";
       }
 
+      let eventUrl =
+        params.get("url") || params.get("u") || window.STARTGG_URL || "";
       // Auto-start if both values exist
       if (authToken && eventUrl) {
         document.getElementById("configPanel").classList.add("hidden");
