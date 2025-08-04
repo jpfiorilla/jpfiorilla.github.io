@@ -85,8 +85,12 @@
       #configPanel.hidden {
         display: none;
       }
+      .placement {
+        font-size: 14px;
+        color: #ccc;
+        margin-left: 4px;
+      }
     </style>
-    <script src="recent-sets-config.js"></script>
   </head>
   <body>
     <div class="overlay">
@@ -97,7 +101,7 @@
         <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
         <button type="submit">Start</button>
       </form>
-      <div class="header">Recent Results</div>
+      <div class="header">Recent Sets</div>
       <div id="setsContainer"></div>
     </div>
 
@@ -105,6 +109,7 @@
       const API_URL = "https://api.start.gg/gql/alpha";
       let lastSetIds = new Set();
       let pollingInterval;
+      let entrantPlacements = {};
 
       // Parse query params
       const params = new URLSearchParams(window.location.search);
@@ -114,35 +119,50 @@
         window.STARTGG_TOKEN ||
         localStorage.getItem("startggToken") ||
         "";
+      let eventUrl =
+        params.get("url") || params.get("u") || window.STARTGG_URL || "";
 
       // Show token input if no token
       if (!authToken) {
         document.getElementById("tokenField").style.display = "block";
       }
 
-      let eventUrl =
-        params.get("url") || params.get("u") || window.STARTGG_URL || "";
       // Auto-start if both values exist
       if (authToken && eventUrl) {
         document.getElementById("configPanel").classList.add("hidden");
         startOverlay();
       }
 
+      // Allow form submission for OBS Interact mode
       document
         .getElementById("configPanel")
         .addEventListener("submit", startOverlay);
 
-      async function fetchSets(slug) {
+      async function fetchData(slug) {
         const query = `
-          query EventSets($slug: String!) {
+          query EventSetsAndEntrants($slug: String!) {
             event(slug: $slug) {
               sets(perPage: 5, page: 1, sortType: RECENT) {
                 nodes {
                   id
+                  round
                   fullRoundText
                   slots {
-                    entrant { name }
-                    standing { stats { score { value } } }
+                    entrant {
+                      id
+                      name
+                    }
+                    standing {
+                      stats { score { value } }
+                    }
+                  }
+                }
+              }
+              entrants(query: { perPage: 500 }) {
+                nodes {
+                  id
+                  standing {
+                    placement
                   }
                 }
               }
@@ -159,10 +179,22 @@
         });
         const json = await res.json();
         if (!json.data || json.errors) {
-          console.error("Error fetching sets:", json.errors || json);
-          return [];
+          console.error("Error fetching data:", json.errors || json);
+          return { sets: [], entrants: [] };
         }
-        return json.data.event?.sets?.nodes || [];
+        return {
+          sets: json.data.event?.sets?.nodes || [],
+          entrants: json.data.event?.entrants?.nodes || [],
+        };
+      }
+
+      function buildEntrantPlacementMap(entrants) {
+        entrantPlacements = {};
+        entrants.forEach((entrant) => {
+          if (entrant?.id && entrant.standing?.placement) {
+            entrantPlacements[entrant.id] = entrant.standing.placement;
+          }
+        });
       }
 
       function renderSets(sets) {
@@ -173,23 +205,43 @@
           const isNew = !lastSetIds.has(set.id);
           const div = document.createElement("div");
           div.className = "set" + (isNew ? " new" : "");
+
+          const [p1, p2] = set.slots;
+          const p1Score = p1?.standing?.stats?.score?.value ?? "-";
+          const p2Score = p2?.standing?.stats?.score?.value ?? "-";
+
+          const p1Placement = entrantPlacements[p1?.entrant?.id];
+          const p2Placement = entrantPlacements[p2?.entrant?.id];
+
+          let p1Extra = "";
+          let p2Extra = "";
+          if (
+            typeof p1Score === "number" &&
+            typeof p2Score === "number" &&
+            p1Score !== p2Score &&
+            set.round < 0
+          ) {
+            if (p1Score > p2Score && p2Placement) {
+              p2Extra = `<span class="placement">(${p2Placement}th)</span>`;
+            } else if (p2Score > p1Score && p1Placement) {
+              p1Extra = `<span class="placement">(${p1Placement}th)</span>`;
+            }
+          }
+
           div.innerHTML = `
             <div class="players">
               <div class="player">
-                <span>${set.slots[0]?.entrant?.name || "TBD"}</span>
-                <span>${
-                  set.slots[0]?.standing?.stats?.score?.value ?? "-"
-                }</span>
+                <span>${p1?.entrant?.name || "TBD"} ${p1Extra}</span>
+                <span>${p1Score}</span>
               </div>
               <div class="player">
-                <span>${set.slots[1]?.entrant?.name || "TBD"}</span>
-                <span>${
-                  set.slots[1]?.standing?.stats?.score?.value ?? "-"
-                }</span>
+                <span>${p2?.entrant?.name || "TBD"} ${p2Extra}</span>
+                <span>${p2Score}</span>
               </div>
             </div>
             <div class="round">${set.fullRoundText || ""}</div>
           `;
+
           container.appendChild(div);
           if (isNew) lastSetIds.add(set.id);
         });
@@ -236,13 +288,15 @@
 
         if (pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(async () => {
-          const sets = await fetchSets(slug);
+          const { sets, entrants } = await fetchData(slug);
+          buildEntrantPlacementMap(entrants);
           renderSets(sets);
         }, 15000);
 
         // Fetch immediately
         (async () => {
-          const sets = await fetchSets(slug);
+          const { sets, entrants } = await fetchData(slug);
+          buildEntrantPlacementMap(entrants);
           renderSets(sets);
         })();
       }
