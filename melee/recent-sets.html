@@ -653,6 +653,32 @@
           }, 15000);
         }
 
+        document.addEventListener("DOMContentLoaded", () => {
+          if (window.ENABLE_DEV_HEAD_TO_HEAD) {
+            document.getElementById("toggleH2H").style.display = "block";
+          }
+
+          let showingH2H = false;
+          document.getElementById("toggleH2H").addEventListener("click", () => {
+            showingH2H = !showingH2H;
+
+            const setsContainer = document.getElementById("setsContainer");
+            const h2hContainer = document.getElementById("headToHeadContainer");
+            const header = document.querySelector(".header");
+
+            if (showingH2H) {
+              setsContainer.style.display = "none";
+              h2hContainer.style.display = "flex";
+              header.textContent = "Head to Head";
+              renderHeadToHead();
+            } else {
+              setsContainer.style.display = "grid";
+              h2hContainer.style.display = "none";
+              header.textContent = "Recent Results";
+            }
+          });
+        });
+
         (async () => {
           const { sets, entrants } = await fetchData(slug);
           buildEntrantPlacementMap(entrants);
@@ -679,29 +705,4 @@
       Toggle H2H
     </button>
   </body>
-  <script>
-    if (window.ENABLE_DEV_HEAD_TO_HEAD) {
-      document.getElementById("toggleH2H").style.display = "block";
-    }
-
-    let showingH2H = false;
-    document.getElementById("toggleH2H").addEventListener("click", () => {
-      showingH2H = !showingH2H;
-
-      const setsContainer = document.getElementById("setsContainer");
-      const h2hContainer = document.getElementById("headToHeadContainer");
-      const header = document.querySelector(".header");
-
-      if (showingH2H) {
-        setsContainer.style.display = "none";
-        h2hContainer.style.display = "flex";
-        header.textContent = "Head to Head";
-        renderHeadToHead(); // new function
-      } else {
-        setsContainer.style.display = "grid";
-        h2hContainer.style.display = "none";
-        header.textContent = "Recent Results";
-      }
-    });
-  </script>
 </html>
