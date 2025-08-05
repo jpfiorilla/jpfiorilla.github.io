@@ -71,12 +71,23 @@
         grid-template-columns: auto 1fr auto 1fr auto;
         align-items: center;
         gap: 16px;
-        /* border: 3px solid #ff00aa; */
         border-radius: 40px;
-        /* padding: 8px 12px; */
         width: 95%;
         font-size: clamp(16px, 2vw, 28px);
         font-weight: bold;
+        position: relative;
+        /* background: #14253d; */
+        /* border: 3px solid #ff00aa; */
+        /* padding: 8px 12px; */
+      }
+
+      .set .set-background {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        top: 4px;
+        bottom: 4px;
+        z-index: -1;
         background: #14253d;
       }
 
@@ -91,6 +102,7 @@
         font-size: clamp(18px, 2vw, 28px);
         font-weight: bold;
         color: #ffffff;
+        background: #14253d;
       }
 
       .player-name {
@@ -359,6 +371,7 @@
             p2?.entrant?.name || "TBD"
           }</span></div>
             <div class="score">${isNaN(p2Score) ? "-" : p2Score}</div>
+            <div class="set-background"></div>
           `;
 
           container.appendChild(div);
