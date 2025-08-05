@@ -14,86 +14,123 @@
       body {
         margin: 0;
         padding: 0;
-        background: transparent;
+        background: #0d1b2a; /* Deep navy background */
         font-family: "Coolvetica", Arial, sans-serif;
-        color: #fff;
+        color: #ffffff;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
+
       .overlay {
         width: 100%;
-        padding: 10px;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
         box-sizing: border-box;
-        background: rgba(0, 0, 0, 0.5);
-        border-radius: 12px;
-        font-size: 20px;
-      }
-      .header {
-        font-weight: bold;
-        font-size: 24px;
-        margin-bottom: 8px;
-        text-align: center;
-      }
-      .set {
         display: flex;
         flex-direction: column;
-        margin: 8px 0;
-        padding: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        transition: background 0.3s;
+        align-items: center;
       }
-      .set.new {
-        background: rgba(0, 255, 0, 0.3);
-      }
-      .players {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 4px;
-      }
-      .player {
-        display: flex;
-        justify-content: space-between;
-        width: 48%;
-      }
-      .round {
+
+      .header {
+        font-weight: bold;
+        font-size: 48px;
         text-align: center;
-        font-size: 14px;
-        opacity: 0.7;
+        margin-bottom: 40px;
+        color: #ffffff;
       }
-      .config {
-        margin-bottom: 10px;
+
+      .set {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 3px solid #ff00aa; /* Accent color */
+        border-radius: 40px;
+        padding: 10px 20px;
+        margin: 15px 0;
+        width: 90%;
+        font-size: 28px;
+        font-weight: bold;
+        background: #14253d; /* Slightly lighter navy */
+      }
+
+      .player-name {
+        flex: 1;
         text-align: center;
+        color: #ffffff;
       }
-      input {
-        width: 80%;
-        padding: 6px;
-        font-size: 16px;
-        border-radius: 6px;
-        border: none;
-        margin-bottom: 6px;
+
+      .vs {
+        font-size: 22px;
+        color: #cbd5e1; /* Light gray */
+        margin: 0 10px;
       }
-      button {
-        padding: 6px 12px;
-        font-size: 16px;
-        border-radius: 6px;
-        border: none;
-        background: #00bfff;
-        color: white;
-        cursor: pointer;
+
+      .score {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 3px solid #ff00aa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: bold;
+        color: #ff00aa;
       }
+
+      .footer {
+        text-align: center;
+        margin-top: 40px;
+        font-size: 18px;
+        color: #cbd5e1;
+        opacity: 0.8;
+      }
+
+      .footer img {
+        height: 50px;
+        margin: 10px;
+      }
+
       #configPanel.hidden {
         display: none;
       }
-      .placement {
-        font-size: 14px;
-        color: #ccc;
-        margin-left: 4px;
+
+      .config {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      input {
+        width: 80%;
+        padding: 8px;
+        font-size: 18px;
+        border-radius: 6px;
+        border: 2px solid #334155;
+        margin-bottom: 10px;
+        background: #1e293b;
+        color: #fff;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 18px;
+        border-radius: 6px;
+        border: none;
+        background: #ff00aa;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      button:hover {
+        background: #e60098;
       }
     </style>
   </head>
   <body>
     <div class="overlay">
+      <!-- Config Panel -->
       <form id="configPanel" class="config">
         <div id="tokenField" style="display: none">
           <input id="tokenInput" placeholder="Paste Start.gg API Token" /><br />
@@ -101,8 +138,19 @@
         <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
         <button type="submit">Start</button>
       </form>
-      <div class="header">Recent Sets</div>
+
+      <!-- Header -->
+      <div class="header">Recent Results</div>
+
+      <!-- Sets Container -->
       <div id="setsContainer"></div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>In Partnership With</p>
+        <img src="images/nycmelee.jpg" alt="NYC Melee" />
+        <img src="images/osnyc.jpg" alt="Partner Logo" />
+      </div>
     </div>
 
     <script>
@@ -111,7 +159,6 @@
       let pollingInterval;
       let entrantPlacements = {};
 
-      // Parse query params
       const params = new URLSearchParams(window.location.search);
       let authToken =
         params.get("token") ||
@@ -122,18 +169,15 @@
       let eventUrl =
         params.get("url") || params.get("u") || window.STARTGG_URL || "";
 
-      // Show token input if no token
       if (!authToken) {
         document.getElementById("tokenField").style.display = "block";
       }
 
-      // Auto-start if both values exist
       if (authToken && eventUrl) {
         document.getElementById("configPanel").classList.add("hidden");
         startOverlay();
       }
 
-      // Allow form submission for OBS Interact mode
       document
         .getElementById("configPanel")
         .addEventListener("submit", startOverlay);
@@ -210,36 +254,12 @@
           const p1Score = p1?.standing?.stats?.score?.value ?? "-";
           const p2Score = p2?.standing?.stats?.score?.value ?? "-";
 
-          const p1Placement = entrantPlacements[p1?.entrant?.id];
-          const p2Placement = entrantPlacements[p2?.entrant?.id];
-
-          let p1Extra = "";
-          let p2Extra = "";
-          if (
-            typeof p1Score === "number" &&
-            typeof p2Score === "number" &&
-            p1Score !== p2Score &&
-            set.round < 0
-          ) {
-            if (p1Score > p2Score && p2Placement) {
-              p2Extra = `<span class="placement">(${p2Placement}th)</span>`;
-            } else if (p2Score > p1Score && p1Placement) {
-              p1Extra = `<span class="placement">(${p1Placement}th)</span>`;
-            }
-          }
-
           div.innerHTML = `
-            <div class="players">
-              <div class="player">
-                <span>${p1?.entrant?.name || "TBD"} ${p1Extra}</span>
-                <span>${p1Score}</span>
-              </div>
-              <div class="player">
-                <span>${p2?.entrant?.name || "TBD"} ${p2Extra}</span>
-                <span>${p2Score}</span>
-              </div>
-            </div>
-            <div class="round">${set.fullRoundText || ""}</div>
+            <div class="score">${p1Score}</div>
+            <div class="player-name">${p1?.entrant?.name || "TBD"}</div>
+            <div class="vs">VS</div>
+            <div class="player-name">${p2?.entrant?.name || "TBD"}</div>
+            <div class="score">${p2Score}</div>
           `;
 
           container.appendChild(div);
@@ -293,7 +313,6 @@
           renderSets(sets);
         }, 15000);
 
-        // Fetch immediately
         (async () => {
           const { sets, entrants } = await fetchData(slug);
           buildEntrantPlacementMap(entrants);
