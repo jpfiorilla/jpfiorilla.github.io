@@ -214,6 +214,7 @@
       </div>
     </div>
 
+    <script src="/recent-sets-config.js"></script>
     <script>
       const API_URL = "https://api.start.gg/gql/alpha";
       let lastSetIds = new Set();
@@ -388,12 +389,14 @@
 
         document.getElementById("configPanel").classList.add("hidden");
 
-        if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(async () => {
-          const { sets, entrants } = await fetchData(slug);
-          buildEntrantPlacementMap(entrants);
-          renderSets(sets);
-        }, 15000);
+        if (window.ENABLE_POLLING !== false) {
+          if (pollingInterval) clearInterval(pollingInterval);
+          pollingInterval = setInterval(async () => {
+            const { sets, entrants } = await fetchData(slug);
+            buildEntrantPlacementMap(entrants);
+            renderSets(sets);
+          }, 15000);
+        }
 
         (async () => {
           const { sets, entrants } = await fetchData(slug);
