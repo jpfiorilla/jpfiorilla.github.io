@@ -40,18 +40,25 @@
         color: #ffffff;
       }
 
+      #setsContainer {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        width: 100%;
+        justify-items: center;
+      }
+
       .set {
-        display: flex;
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr auto;
         align-items: center;
-        justify-content: space-between;
-        border: 3px solid #ff00aa; /* Accent color */
+        border: 3px solid #ff00aa;
         border-radius: 40px;
         padding: 10px 20px;
-        margin: 15px 0;
         width: 90%;
         font-size: 28px;
         font-weight: bold;
-        background: #14253d; /* Slightly lighter navy */
+        background: #14253d;
       }
 
       .player-name {
