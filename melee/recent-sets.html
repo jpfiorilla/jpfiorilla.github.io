@@ -177,11 +177,6 @@
         transform-origin: left center;
       }
 
-      .player-name.winner span {
-        border-bottom: 3px solid rgba(246, 60, 76, 0.5);
-        padding-bottom: 2px;
-      }
-
       .player-name.left {
         text-align: left;
       }
@@ -478,10 +473,8 @@
             let loserId = null;
             if (!isNaN(p1Score) && !isNaN(p2Score)) {
               if (p1Score > p2Score) {
-                p1Class += " winner";
                 loserId = p2?.entrant?.id;
               } else if (p2Score > p1Score) {
-                p2Class += " winner";
                 loserId = p1?.entrant?.id;
               }
             }
