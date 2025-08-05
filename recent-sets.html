@@ -67,6 +67,16 @@
         color: #ffffff;
       }
 
+      .player-name.left {
+        text-align: left;
+        padding-left: 16px;
+      }
+
+      .player-name.right {
+        text-align: right;
+        padding-right: 16px;
+      }
+
       .vs {
         font-size: 22px;
         color: #cbd5e1; /* Light gray */
@@ -83,7 +93,7 @@
         justify-content: center;
         font-size: 28px;
         font-weight: bold;
-        color: #ff00aa;
+        color: #ffffff;
       }
 
       .footer {
@@ -263,9 +273,9 @@
 
           div.innerHTML = `
             <div class="score">${p1Score}</div>
-            <div class="player-name">${p1?.entrant?.name || "TBD"}</div>
+            <div class="player-name left">${p1?.entrant?.name || "TBD"}</div>
             <div class="vs">VS</div>
-            <div class="player-name">${p2?.entrant?.name || "TBD"}</div>
+            <div class="player-name right">${p2?.entrant?.name || "TBD"}</div>
             <div class="score">${p2Score}</div>
           `;
 
