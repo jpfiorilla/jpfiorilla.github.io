@@ -61,7 +61,7 @@
       #setsContainer {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 18px;
         width: 100%;
         justify-items: center;
       }
@@ -111,6 +111,11 @@
         font-size: 1.25em;
         letter-spacing: 1px;
         transform-origin: left center;
+      }
+
+      .player-name.winner span {
+        border-bottom: 3px solid rgba(246, 60, 76, 0.5);
+        padding-bottom: 2px;
       }
 
       .player-name.left {
@@ -250,7 +255,7 @@
         const query = `
           query EventSetsAndEntrants($slug: String!) {
             event(slug: $slug) {
-              sets(perPage: 4, page: 1, sortType: RECENT) {
+              sets(perPage: 5, page: 1, sortType: RECENT) {
                 nodes {
                   id
                   round
@@ -330,19 +335,30 @@
           div.className = "set" + (isNew ? " new" : "");
 
           const [p1, p2] = set.slots;
-          const p1Score = p1?.standing?.stats?.score?.value ?? "-";
-          const p2Score = p2?.standing?.stats?.score?.value ?? "-";
+          const p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
+          const p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
+
+          // Determine winner classes
+          let p1Class = "player-name left";
+          let p2Class = "player-name right";
+          if (!isNaN(p1Score) && !isNaN(p2Score)) {
+            if (p1Score > p2Score) {
+              p1Class += " winner";
+            } else if (p2Score > p1Score) {
+              p2Class += " winner";
+            }
+          }
 
           div.innerHTML = `
-            <div class="score">${p1Score}</div>
-            <div class="player-name left"><span>${
-              p1?.entrant?.name || "TBD"
-            }</span></div>
+            <div class="score">${isNaN(p1Score) ? "-" : p1Score}</div>
+            <div class="${p1Class}"><span>${
+            p1?.entrant?.name || "TBD"
+          }</span></div>
             <div class="vs">VS</div>
-            <div class="player-name right"><span>${
-              p2?.entrant?.name || "TBD"
-            }</span></div>
-            <div class="score">${p2Score}</div>
+            <div class="${p2Class}"><span>${
+            p2?.entrant?.name || "TBD"
+          }</span></div>
+            <div class="score">${isNaN(p2Score) ? "-" : p2Score}</div>
           `;
 
           container.appendChild(div);
