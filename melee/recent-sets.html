@@ -96,6 +96,7 @@
         gap: 18px;
         width: 100%;
         justify-items: center;
+        min-height: 340px;
       }
 
       #setsContainer.fade-in {
@@ -148,6 +149,10 @@
         font-weight: bold;
         color: #ffffff;
         background: #14253d;
+      }
+
+      .score.winner {
+        border-color: #22c55e;
       }
 
       .player-name {
@@ -507,8 +512,13 @@
               }
             }
 
+            const p1ScoreClass = `score${p1Score > p2Score ? " winner" : ""}`;
+            const p2ScoreClass = `score${p2Score > p1Score ? " winner" : ""}`;
+
             div.innerHTML = `
-              <div class="score">${isNaN(p1Score) ? "-" : p1Score}</div>
+              <div class="${p1ScoreClass}">${
+              isNaN(p1Score) ? "-" : p1Score
+            }</div>
               <div class="${p1Class}">
                 <span>${p1?.entrant?.name || "TBD"}</span>
                 ${
@@ -526,7 +536,9 @@
                 }
                 <span>${p2?.entrant?.name || "TBD"}</span>
               </div>
-              <div class="score">${isNaN(p2Score) ? "-" : p2Score}</div>
+              <div class="${p2ScoreClass}">${
+              isNaN(p2Score) ? "-" : p2Score
+            }</div>
               <div class="set-background"></div>
             `;
 
@@ -551,7 +563,7 @@
           return `tournament/${match[1]}/event/${match[2]}`;
         } else {
           alert(
-            "Could not extract event slug from URL. Make sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
+            "Could not extract event slug from URL. .sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
           );
           return null;
         }
