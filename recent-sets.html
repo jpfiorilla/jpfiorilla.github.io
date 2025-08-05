@@ -348,6 +348,46 @@
         document.querySelectorAll(".player-name").forEach(fitText);
       }
 
+      function formatRound(set) {
+        if (!set || !set.fullRoundText) return "VS";
+
+        const roundText = set.fullRoundText.toLowerCase();
+
+        // Finals
+        if (roundText.includes("grand final")) return "GF";
+        if (roundText.includes("losers final")) return "LF";
+        if (roundText.includes("winners final")) return "WF";
+
+        // Semis / Quarters
+        if (roundText.includes("winners semi")) return "WSF";
+        if (roundText.includes("losers semi")) return "LSF";
+        if (roundText.includes("winners quarter")) return "WQF";
+        if (roundText.includes("losers quarter")) return "LQF";
+
+        // Bracket rounds (Top N)
+        if (roundText.includes("winners round")) {
+          const num = extractTopNumber(roundText);
+          return `W.T${num}`;
+        }
+        if (roundText.includes("losers round")) {
+          const num = extractTopNumber(roundText);
+          return `L.T${num}`;
+        }
+
+        return "VS";
+      }
+
+      function extractTopNumber(text) {
+        // Example text: "losers round 3" or "winners round 4"
+        const match = text.match(/(\d+)/);
+        if (!match) return "";
+        const roundNum = parseInt(match[1]);
+
+        // Convert to Top N (approx)
+        // Round 1 -> Top 32, Round 2 -> Top 16, Round 3 -> Top 8, etc.
+        return Math.pow(2, Math.max(0, 6 - roundNum)); // assuming double elim ~64 base
+      }
+
       function renderSets(sets) {
         const container = document.getElementById("setsContainer");
         container.innerHTML = "";
@@ -412,7 +452,7 @@
                   : ""
               }
             </div>
-            <div class="vs">VS</div>
+            <div class="vs">${formatRound(set)}</div>
             <div class="${p2Class}">
               ${
                 p2PlacementText
