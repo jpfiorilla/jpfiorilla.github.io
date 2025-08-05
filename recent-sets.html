@@ -4,167 +4,187 @@
     <meta charset="UTF-8" />
     <title>Start.gg Bracket Overlay</title>
     <style>
-      :root {
-        --antialias: -webkit-font-smoothing: antialiased;
-        --antialias-moz: -moz-osx-font-smoothing: grayscale;
-      }
+        :root {
+          --antialias: -webkit-font-smoothing: antialiased;
+          --antialias-moz: -moz-osx-font-smoothing: grayscale;
+        }
 
-      .antialias {
-        -webkit-font-smoothing: var(--antialias);
-        -moz-osx-font-smoothing: var(--antialias-moz);
-      }
+        .antialias {
+          -webkit-font-smoothing: var(--antialias);
+          -moz-osx-font-smoothing: var(--antialias-moz);
+        }
 
-      @font-face {
-        font-family: "Coolvetica";
-        src: url("fonts/Coolvetica-Rg.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
-      }
+        @font-face {
+          font-family: "Coolvetica";
+          src: url("fonts/Coolvetica-Rg.otf") format("opentype");
+          font-weight: normal;
+          font-style: normal;
+        }
 
-      .header,
-      .player-name,
-      .score {
-        color: #ffffff;
-      }
+        .header,
+        .player-name,
+        .score {
+          color: #ffffff;
+        }
 
-      .header,
-      .player-name,
-      .score {
-        @apply .antialias; /* If using Tailwind, otherwise use class in HTML */
-      }
+        .header,
+        .player-name,
+        .score {
+          @apply .antialias; /* If using Tailwind, otherwise use class in HTML */
+        }
 
-      body {
-        margin: 0;
-        padding: 0;
-        background: #0d1b2a; /* Deep navy background */
-        font-family: "Coolvetica", Arial, sans-serif;
-        color: #ffffff;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
+        body {
+          margin: 0;
+          padding: 0;
+          background: #0d1b2a;
+          font-family: "Coolvetica", Arial, sans-serif;
+          color: #ffffff;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
 
-      .overlay {
-        width: 100%;
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 20px;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
+        .overlay {
+          width: 100%;
+          height: 100%;
+          max-width: 640px;  /* OBS panel width */
+          max-height: 540px; /* OBS panel height */
+          padding: 10px;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+        }
 
-      .header {
-        font-weight: bold;
-        font-size: 48px;
-        text-align: center;
-        margin-bottom: 40px;
-        color: #ffffff;
-      }
+        .header {
+          font-weight: bold;
+          font-size: clamp(24px, 5vw, 48px);
+          text-align: center;
+          margin-bottom: 20px;
+          color: #ffffff;
+        }
 
-      #setsContainer {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 20px;
-        width: 100%;
-        justify-items: center;
-      }
+        #setsContainer {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          width: 100%;
+          justify-items: center;
+        }
 
-      .set {
+        .set {
         display: grid;
         grid-template-columns: auto 1fr auto 1fr auto;
         align-items: center;
         border: 3px solid #ff00aa;
         border-radius: 40px;
-        padding: 10px 20px;
-        width: 90%;
-        font-size: 28px;
+        padding: 8px 12px;
+        width: 95%;
+        font-size: clamp(16px, 2vw, 28px);
         font-weight: bold;
         background: #14253d;
       }
 
-      .player-name {
-        flex: 1;
-        text-align: center;
-        color: #ffffff;
-      }
-
-      .player-name.left {
-        text-align: left;
-        padding-left: 16px;
-      }
-
-      .player-name.right {
-        text-align: right;
-        padding-right: 16px;
-      }
-
-      .vs {
-        font-size: 22px;
-        color: #cbd5e1; /* Light gray */
-        margin: 0 10px;
-      }
-
       .score {
-        width: 60px;
-        height: 60px;
+        width: clamp(40px, 6vw, 60px);
+        height: clamp(40px, 6vw, 60px);
         border-radius: 50%;
         border: 3px solid #ff00aa;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 28px;
+        font-size: clamp(18px, 2vw, 28px);
         font-weight: bold;
         color: #ffffff;
       }
 
-      .footer {
-        text-align: center;
-        margin-top: 40px;
-        font-size: 18px;
-        color: #cbd5e1;
-        opacity: 0.8;
-      }
+        .player-name {
+          flex: 1;
+          text-align: center;
+          color: #ffffff;
+        }
 
-      .footer img {
-        height: 50px;
-        margin: 10px;
-      }
+        .player-name.left {
+          text-align: left;
+          padding-left: 16px;
+        }
 
-      #configPanel.hidden {
-        display: none;
-      }
+        .player-name.right {
+          text-align: right;
+          padding-right: 16px;
+        }
 
-      .config {
-        margin-bottom: 20px;
-        text-align: center;
-      }
+        .vs {
+          font-size: 22px;
+          color: #cbd5e1; /* Light gray */
+          margin: 0 10px;
+        }
 
-      input {
-        width: 80%;
-        padding: 8px;
-        font-size: 18px;
-        border-radius: 6px;
-        border: 2px solid #334155;
-        margin-bottom: 10px;
-        background: #1e293b;
-        color: #fff;
-      }
+        .score {
+          width: clamp(40px, 6vw, 60px);
+          height: clamp(40px, 6vw, 60px);
+          border-radius: 50%;
+          border: 3px solid #ff00aa;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: clamp(18px, 2vw, 28px);
+          font-weight: bold;
+          color: #ffffff;
+        }
 
-      button {
-        padding: 8px 16px;
-        font-size: 18px;
-        border-radius: 6px;
-        border: none;
-        background: #ff00aa;
-        color: white;
-        cursor: pointer;
-        font-weight: bold;
-      }
+        .footer {
+          text-align: center;
+          margin-top: 40px;
+          font-size: 18px;
+          color: #cbd5e1;
+          opacity: 0.8;
+        }
 
-      button:hover {
-        background: #e60098;
-      }
+        .footer img {
+          height: 50px;
+          margin: 10px;
+        }
+
+        #configPanel.hidden {
+          display: none;
+        }
+
+        .config {
+          margin-bottom: 20px;
+          text-align: center;
+        }
+
+        input {
+          width: 80%;
+          padding: 8px;
+          font-size: 18px;
+          border-radius: 6px;
+          border: 2px solid #334155;
+          margin-bottom: 10px;
+          background: #1e293b;
+          color: #fff;
+        }
+
+        button {
+          padding: 8px 16px;
+          font-size: 18px;
+          border-radius: 6px;
+          border: none;
+          background: #ff00aa;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+        }
+
+        button:hover {
+          background: #e60098;
+        }
     </style>
   </head>
   <body>
@@ -225,7 +245,7 @@
         const query = `
           query EventSetsAndEntrants($slug: String!) {
             event(slug: $slug) {
-              sets(perPage: 5, page: 1, sortType: RECENT) {
+              sets(perPage: 4, page: 1, sortType: RECENT) {
                 nodes {
                   id
                   round
