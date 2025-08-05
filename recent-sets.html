@@ -114,7 +114,9 @@
         text-overflow: ellipsis;
         max-width: 280px;
         min-width: 60px;
-        display: block;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
       }
 
       .player-name span {
@@ -143,6 +145,15 @@
         font-size: 22px;
         color: #cbd5e1;
         padding: 0 10px;
+      }
+
+      .placement {
+        font-size: 14px;
+        color: #cbd5e1; /* similar to VS text */
+        opacity: 0.8;
+        text-align: center;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
       }
 
       .score {
@@ -350,26 +361,66 @@
           const p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
           const p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
 
-          // Determine winner classes
+          // Determine winner & loser
           let p1Class = "player-name left";
           let p2Class = "player-name right";
+          let loserId = null;
           if (!isNaN(p1Score) && !isNaN(p2Score)) {
             if (p1Score > p2Score) {
               p1Class += " winner";
+              loserId = p2?.entrant?.id;
             } else if (p2Score > p1Score) {
               p2Class += " winner";
+              loserId = p1?.entrant?.id;
+            }
+          }
+
+          // Check if losers bracket elimination
+          const getOrdinal = (num) => {
+            if (!num) return "";
+            const s = ["th", "st", "nd", "rd"];
+            const v = num % 100;
+            return num + (s[(v - 20) % 10] || s[v] || s[0]);
+          };
+
+          let p1PlacementText = "";
+          let p2PlacementText = "";
+          if (
+            loserId &&
+            (set.round < 0 ||
+              (set.fullRoundText &&
+                set.fullRoundText.toLowerCase().includes("grand final")))
+          ) {
+            const placement = entrantPlacements[loserId];
+            if (placement) {
+              const text = getOrdinal(placement);
+              if (loserId === p1?.entrant?.id) {
+                p1PlacementText = text;
+              } else if (loserId === p2?.entrant?.id) {
+                p2PlacementText = text;
+              }
             }
           }
 
           div.innerHTML = `
             <div class="score">${isNaN(p1Score) ? "-" : p1Score}</div>
-            <div class="${p1Class}"><span>${
-            p1?.entrant?.name || "TBD"
-          }</span></div>
+            <div class="${p1Class}">
+              <span>${p1?.entrant?.name || "TBD"}</span>
+              ${
+                p1PlacementText
+                  ? `<div class="placement">(${p1PlacementText})</div>`
+                  : ""
+              }
+            </div>
             <div class="vs">VS</div>
-            <div class="${p2Class}"><span>${
-            p2?.entrant?.name || "TBD"
-          }</span></div>
+            <div class="${p2Class}">
+              ${
+                p2PlacementText
+                  ? `<div class="placement">(${p2PlacementText})</div>`
+                  : ""
+              }
+              <span>${p2?.entrant?.name || "TBD"}</span>
+            </div>
             <div class="score">${isNaN(p2Score) ? "-" : p2Score}</div>
             <div class="set-background"></div>
           `;
