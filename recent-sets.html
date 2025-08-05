@@ -39,8 +39,8 @@
       .overlay {
         width: 100%;
         height: 100%;
-        max-width: 640px;  /* OBS panel width */
-        max-height: 540px; /* OBS panel height */
+        max-width: 640px;
+        max-height: 540px;
         padding: 10px;
         box-sizing: border-box;
         display: flex;
@@ -96,6 +96,19 @@
         flex: 1;
         text-align: center;
         color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        min-width: 60px;
+        display: block;
+      }
+
+      .player-name span {
+        display: inline-block;
+        max-width: 100%;
+        font-size: 1em;
+        transform-origin: left center;
       }
 
       .player-name.left {
@@ -289,11 +302,26 @@
         });
       }
 
+      function fitText(element) {
+        const span = element.querySelector("span");
+        if (!span) return;
+        let scale = 1;
+        span.style.transform = "scale(1)";
+        if (span.scrollWidth > element.clientWidth) {
+          scale = element.clientWidth / span.scrollWidth;
+          span.style.transform = `scale(${scale})`;
+        }
+      }
+
+      function adjustPlayerNames() {
+        document.querySelectorAll(".player-name").forEach(fitText);
+      }
+
       function renderSets(sets) {
         const container = document.getElementById("setsContainer");
         container.innerHTML = "";
 
-        sets.forEach((set) => {
+        sets.slice(0, 4).forEach((set) => {
           const isNew = !lastSetIds.has(set.id);
           const div = document.createElement("div");
           div.className = "set" + (isNew ? " new" : "");
@@ -303,20 +331,22 @@
           const p2Score = p2?.standing?.stats?.score?.value ?? "-";
 
           div.innerHTML = `
-            <div class="score antialias">${p1Score}</div>
-            <div class="player-name left antialias">${
+            <div class="score">${p1Score}</div>
+            <div class="player-name left"><span>${
               p1?.entrant?.name || "TBD"
-            }</div>
+            }</span></div>
             <div class="vs">VS</div>
-            <div class="player-name right antialias">${
+            <div class="player-name right"><span>${
               p2?.entrant?.name || "TBD"
-            }</div>
-            <div class="score antialias">${p2Score}</div>
+            }</span></div>
+            <div class="score">${p2Score}</div>
           `;
 
           container.appendChild(div);
           if (isNew) lastSetIds.add(set.id);
         });
+
+        adjustPlayerNames();
       }
 
       function extractSlugFromUrl(url) {
