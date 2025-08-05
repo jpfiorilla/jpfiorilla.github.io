@@ -4,11 +4,33 @@
     <meta charset="UTF-8" />
     <title>Start.gg Bracket Overlay</title>
     <style>
+      :root {
+        --antialias: -webkit-font-smoothing: antialiased;
+        --antialias-moz: -moz-osx-font-smoothing: grayscale;
+      }
+
+      .antialias {
+        -webkit-font-smoothing: var(--antialias);
+        -moz-osx-font-smoothing: var(--antialias-moz);
+      }
+
       @font-face {
         font-family: "Coolvetica";
         src: url("fonts/Coolvetica-Rg.otf") format("opentype");
         font-weight: normal;
         font-style: normal;
+      }
+
+      .header,
+      .player-name,
+      .score {
+        color: #ffffff;
+      }
+
+      .header,
+      .player-name,
+      .score {
+        @apply .antialias; /* If using Tailwind, otherwise use class in HTML */
       }
 
       body {
@@ -157,7 +179,7 @@
       </form>
 
       <!-- Header -->
-      <div class="header">Recent Results</div>
+      <div class="header antialias">Recent Results</div>
 
       <!-- Sets Container -->
       <div id="setsContainer"></div>
@@ -272,11 +294,15 @@
           const p2Score = p2?.standing?.stats?.score?.value ?? "-";
 
           div.innerHTML = `
-            <div class="score">${p1Score}</div>
-            <div class="player-name left">${p1?.entrant?.name || "TBD"}</div>
+            <div class="score antialias">${p1Score}</div>
+            <div class="player-name left antialias">${
+              p1?.entrant?.name || "TBD"
+            }</div>
             <div class="vs">VS</div>
-            <div class="player-name right">${p2?.entrant?.name || "TBD"}</div>
-            <div class="score">${p2Score}</div>
+            <div class="player-name right antialias">${
+              p2?.entrant?.name || "TBD"
+            }</div>
+            <div class="score antialias">${p2Score}</div>
           `;
 
           container.appendChild(div);
