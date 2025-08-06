@@ -73,6 +73,11 @@
         justify-content: center;
       }
 
+      #tokenField {
+        display: none;
+        flex-direction: column;
+      }
+
       .overlay {
         width: 100%;
         height: 100%;
@@ -242,22 +247,23 @@
         border-radius: 50%;
       }
 
+      #configPanel {
+        margin-bottom: 20px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+      }
+
       #configPanel.hidden {
         display: none;
       }
 
-      .config {
-        margin-bottom: 20px;
-        text-align: center;
-      }
-
       input {
-        width: 80%;
+        min-width: 220px;
         padding: 8px;
         font-size: 18px;
         border-radius: 6px;
         border: 2px solid #334155;
-        margin-bottom: 10px;
         background: #1e293b;
         color: #fff;
       }
@@ -281,9 +287,22 @@
   <body>
     <div class="overlay">
       <!-- Config Panel -->
-      <form id="configPanel" class="config">
-        <div id="tokenField" style="display: none">
-          <input id="tokenInput" placeholder="Paste Start.gg API Token" /><br />
+      <form id="configPanel">
+        <div id="tokenField">
+          <input id="tokenInput" placeholder="Paste Start.gg API Token" />
+          <a
+            href="https://developer.start.gg/docs/authentication"
+            target="_blank"
+            style="
+              color: #22c55e;
+              font-size: 14px;
+              margin-left: 8px;
+              text-decoration: none;
+            "
+          >
+            Need a token?
+          </a>
+          <br />
         </div>
         <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
         <button type="submit">Start</button>
@@ -335,7 +354,7 @@
         params.get("url") || params.get("u") || window.STARTGG_URL || "";
 
       if (!authToken) {
-        document.getElementById("tokenField").style.display = "block";
+        document.getElementById("tokenField").style.display = "flex";
       }
 
       if (authToken && eventUrl) {
