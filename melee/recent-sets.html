@@ -525,10 +525,31 @@
         `;
       }
 
+      function setsAreEqual(newSets, oldSets) {
+        if (newSets.length !== oldSets.length) return false;
+        for (let i = 0; i < newSets.length; i++) {
+          const n = newSets[i],
+            o = oldSets[i];
+          if (n.id !== o.id) return false;
+
+          const nScores = n.slots.map(
+            (s) => s?.standing?.stats?.score?.value || "-"
+          );
+          const oScores = o.slots.map(
+            (s) => s?.standing?.stats?.score?.value || "-"
+          );
+          if (nScores[0] !== oScores[0] || nScores[1] !== oScores[1])
+            return false;
+        }
+        return true;
+      }
+
       let isFirstRender = true;
       let lastRenderedSets = [];
       function renderSets(sets) {
-        lastRenderedSets = sets;
+        if (setsAreEqual(sets.slice(0, 4), lastRenderedSets.slice(0, 4))) {
+          return;
+        }
 
         if (isFirstRender && sets.length > 0) {
           document.querySelector(".header").style.display = "block";
@@ -540,16 +561,11 @@
         const existingSetEls = Array.from(container.querySelectorAll(".set"));
         const newSetIds = sets.slice(0, 4).map((s) => s.id);
 
-        // Animate out old sets only if it's not the first render
+        // Remove sets that no longer exist
         existingSetEls.forEach((el) => {
           const id = el.dataset.id;
           if (!newSetIds.includes(id)) {
-            if (!isFirstRender) {
-              el.classList.add("removing");
-              setTimeout(() => el.remove(), 400); // matches animation duration
-            } else {
-              el.remove();
-            }
+            el.remove(); // no animation needed for removed sets
           }
         });
 
@@ -646,6 +662,8 @@
           const container = document.getElementById("setsContainer");
           container.classList.add("fade-in");
         }
+
+        lastRenderedSets = sets.slice(0, 4);
 
         isFirstRender = false;
       }
