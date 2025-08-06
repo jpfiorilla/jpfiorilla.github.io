@@ -136,8 +136,8 @@
         position: absolute;
         left: 20px;
         right: 20px;
-        top: 4px;
-        bottom: 4px;
+        top: 12px;
+        bottom: 12px;
         z-index: -1;
         background: #14253d;
       }
@@ -661,7 +661,7 @@
             const { sets, entrants } = await fetchData(slug);
             buildEntrantPlacementMap(entrants);
             renderSets(sets);
-          }, 15000);
+          }, 5000);
         }
 
         document.addEventListener("DOMContentLoaded", () => {
