@@ -76,6 +76,7 @@
       #tokenField {
         display: flex;
         flex-direction: column;
+        padding-top: 32px;
       }
 
       .overlay {
@@ -98,10 +99,11 @@
         letter-spacing: 3px;
         margin-bottom: 24px;
         color: #ffffff;
+        display: none;
       }
 
       #setsContainer {
-        display: grid;
+        display: none;
         grid-template-columns: 1fr;
         gap: 8px;
         width: 100%;
@@ -234,6 +236,7 @@
       }
 
       .footer {
+        display: none;
         text-align: center;
         margin-top: 12px;
         font-size: 18px;
@@ -525,6 +528,13 @@
       let lastRenderedSets = [];
       function renderSets(sets) {
         lastRenderedSets = sets;
+
+        if (isFirstRender && sets.length > 0) {
+          document.querySelector(".header").style.display = "block";
+          document.getElementById("setsContainer").style.display = "grid";
+          document.querySelector(".footer").style.display = "block";
+        }
+
         const container = document.getElementById("setsContainer");
         const existingSetEls = Array.from(container.querySelectorAll(".set"));
         const newSetIds = sets.slice(0, 4).map((s) => s.id);
