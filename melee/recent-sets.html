@@ -74,7 +74,7 @@
       }
 
       #tokenField {
-        display: none;
+        display: flex;
         flex-direction: column;
       }
 
@@ -289,7 +289,11 @@
       <!-- Config Panel -->
       <form id="configPanel">
         <div id="tokenField">
-          <input id="tokenInput" placeholder="Paste Start.gg API Token" />
+          <input
+            id="tokenInput"
+            placeholder="Paste Start.gg API Token"
+            type="password"
+          />
           <a
             href="https://developer.start.gg/docs/authentication"
             target="_blank"
@@ -350,12 +354,11 @@
         window.STARTGG_TOKEN ||
         localStorage.getItem("startggToken") ||
         "";
+
+      if (authToken) document.getElementById("tokenInput").value = authToken;
+
       let eventUrl =
         params.get("url") || params.get("u") || window.STARTGG_URL || "";
-
-      if (!authToken) {
-        document.getElementById("tokenField").style.display = "flex";
-      }
 
       if (authToken && eventUrl) {
         document.getElementById("configPanel").classList.add("hidden");
