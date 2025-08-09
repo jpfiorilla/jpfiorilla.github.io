@@ -632,10 +632,10 @@
             }
 
             const p1ScoreClass = `score${
-              p1Score === "W" || p1Score !== 0 ? " winner" : ""
+              p1Score === "W" || p1Score > p2Score ? " winner" : ""
             }`;
             const p2ScoreClass = `score${
-              p2Score === "W" || p2Score !== 0 ? " winner" : ""
+              p2Score === "W" || p2Score > p1Score ? " winner" : ""
             }`;
 
             div.innerHTML = `
