@@ -631,8 +631,12 @@
               }
             }
 
-            const p1ScoreClass = `score${p1Score === "W" ? " winner" : ""}`;
-            const p2ScoreClass = `score${p2Score === "W" ? " winner" : ""}`;
+            const p1ScoreClass = `score${
+              p1Score === "W" || p1Score !== 0 ? " winner" : ""
+            }`;
+            const p2ScoreClass = `score${
+              p2Score === "W" || p2Score !== 0 ? " winner" : ""
+            }`;
 
             div.innerHTML = `
             <div class="${p1ScoreClass}">${p1Score}</div>
