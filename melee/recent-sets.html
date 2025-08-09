@@ -393,7 +393,7 @@
                   }
                 }
               }
-              entrants(query: { perPage: 500 }) {
+              entrants(query: { perPage: 10 }) {
                 nodes {
                   id
                   standing {
@@ -565,7 +565,7 @@
         existingSetEls.forEach((el) => {
           const id = el.dataset.id;
           if (!newSetIds.includes(id)) {
-            el.remove(); // no animation needed for removed sets
+            el.remove();
           }
         });
 
@@ -582,16 +582,25 @@
             }
 
             const [p1, p2] = set.slots;
-            const p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
-            const p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
+            let p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
+            let p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
+
+            // Handle DQ logic
+            if (p1Score === -1) {
+              p1Score = "DQ";
+              p2Score = "W";
+            } else if (p2Score === -1) {
+              p2Score = "DQ";
+              p1Score = "W";
+            }
 
             let p1Class = "player-name left";
             let p2Class = "player-name right";
             let loserId = null;
-            if (!isNaN(p1Score) && !isNaN(p2Score)) {
-              if (p1Score > p2Score) {
+            if (!isNaN(parseInt(p1Score)) && !isNaN(parseInt(p2Score))) {
+              if (parseInt(p1Score) > parseInt(p2Score)) {
                 loserId = p2?.entrant?.id;
-              } else if (p2Score > p1Score) {
+              } else if (parseInt(p2Score) > parseInt(p1Score)) {
                 loserId = p1?.entrant?.id;
               }
             }
@@ -622,51 +631,37 @@
               }
             }
 
-            const p1ScoreClass = `score${p1Score > p2Score ? " winner" : ""}`;
-            const p2ScoreClass = `score${p2Score > p1Score ? " winner" : ""}`;
+            const p1ScoreClass = `score${p1Score === "W" ? " winner" : ""}`;
+            const p2ScoreClass = `score${p2Score === "W" ? " winner" : ""}`;
 
             div.innerHTML = `
-              <div class="${p1ScoreClass}">${
-              isNaN(p1Score) ? "-" : p1Score
-            }</div>
-              <div class="${p1Class}">
-                <span>${p1?.entrant?.name || "TBD"}</span>
-                ${
-                  p1PlacementText
-                    ? `<div class="placement">(${p1PlacementText})</div>`
-                    : ""
-                }
-              </div>
-              <div class="vs mono">${formatRound(set)}</div>
-              <div class="${p2Class}">
-                ${
-                  p2PlacementText
-                    ? `<div class="placement">(${p2PlacementText})</div>`
-                    : ""
-                }
-                <span>${p2?.entrant?.name || "TBD"}</span>
-              </div>
-              <div class="${p2ScoreClass}">${
-              isNaN(p2Score) ? "-" : p2Score
-            }</div>
-              <div class="set-background"></div>
-            `;
+            <div class="${p1ScoreClass}">${p1Score}</div>
+            <div class="${p1Class}">
+              <span>${p1?.entrant?.name || "TBD"}</span>
+              ${
+                p1PlacementText
+                  ? `<div class="placement">(${p1PlacementText})</div>`
+                  : ""
+              }
+            </div>
+            <div class="vs mono">${formatRound(set)}</div>
+            <div class="${p2Class}">
+              ${
+                p2PlacementText
+                  ? `<div class="placement">(${p2PlacementText})</div>`
+                  : ""
+              }
+              <span>${p2?.entrant?.name || "TBD"}</span>
+            </div>
+            <div class="${p2ScoreClass}">${p2Score}</div>
+            <div class="set-background"></div>
+          `;
 
             container.appendChild(div);
           }
         });
-
-        adjustPlayerNames();
-
-        if (isFirstRender) {
-          const container = document.getElementById("setsContainer");
-          container.classList.add("fade-in");
-        }
-
-        lastRenderedSets = sets.slice(0, 4);
-
-        isFirstRender = false;
       }
+
       function extractSlugFromUrl(url) {
         const match = url.match(
           /start\.gg\/tournament\/([^\/]+)\/event\/([^\/]+)/
