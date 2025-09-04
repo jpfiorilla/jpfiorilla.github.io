@@ -1,0 +1,1738 @@
+{
+  "data": {
+    "event": {
+      "sets": {
+        "nodes": [
+          {
+            "id": 92886586,
+            "round": 4,
+            "fullRoundText": "Grand Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21009575,
+                  "name": "Free Agent | Trif"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886617,
+            "round": -8,
+            "fullRoundText": "Losers Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21022386,
+                  "name": "Rishi"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886616,
+            "round": -7,
+            "fullRoundText": "Losers Semi-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20976240,
+                  "name": "upstate | Zanya"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886585,
+            "round": 3,
+            "fullRoundText": "Winners Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21022386,
+                  "name": "Rishi"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21009575,
+                  "name": "Free Agent | Trif"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886615,
+            "round": -6,
+            "fullRoundText": "Losers Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20976240,
+                  "name": "upstate | Zanya"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21023330,
+                  "name": "Brotherhood| | Foxy Grandpa"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886614,
+            "round": -6,
+            "fullRoundText": "Losers Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21011041,
+                  "name": "BLE | E-tie"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886584,
+            "round": 2,
+            "fullRoundText": "Winners Semi-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21009575,
+                  "name": "Free Agent | Trif"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20976240,
+                  "name": "upstate | Zanya"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886613,
+            "round": -5,
+            "fullRoundText": "Losers Round 3",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21021989,
+                  "name": "Project D | JoJo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21023330,
+                  "name": "Brotherhood| | Foxy Grandpa"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886612,
+            "round": -5,
+            "fullRoundText": "Losers Round 3",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21011041,
+                  "name": "BLE | E-tie"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21008547,
+                  "name": "L7 | Freezus"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886583,
+            "round": 2,
+            "fullRoundText": "Winners Semi-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21022386,
+                  "name": "Rishi"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 3
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886611,
+            "round": -4,
+            "fullRoundText": "Losers Round 2",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967174,
+                  "name": "GabeGlitches"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21023330,
+                  "name": "Brotherhood| | Foxy Grandpa"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886608,
+            "round": -4,
+            "fullRoundText": "Losers Round 2",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21011041,
+                  "name": "BLE | E-tie"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21019373,
+                  "name": "LG | fitzy"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886610,
+            "round": -4,
+            "fullRoundText": "Losers Round 2",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21021989,
+                  "name": "Project D | JoJo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21009138,
+                  "name": "Level1 | max"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886582,
+            "round": 1,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20976240,
+                  "name": "upstate | Zanya"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21011041,
+                  "name": "BLE | E-tie"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886607,
+            "round": -3,
+            "fullRoundText": "Losers Round 1",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21024574,
+                  "name": "BigJoig"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21023330,
+                  "name": "Brotherhood| | Foxy Grandpa"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886606,
+            "round": -3,
+            "fullRoundText": "Losers Round 1",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21008162,
+                  "name": "netplayge | :3"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21009138,
+                  "name": "Level1 | max"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886609,
+            "round": -4,
+            "fullRoundText": "Losers Round 2",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21008547,
+                  "name": "L7 | Freezus"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21017984,
+                  "name": "regEx"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886604,
+            "round": -3,
+            "fullRoundText": "Losers Round 1",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21011889,
+                  "name": "netplayge | GUESS MONSTER"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21019373,
+                  "name": "LG | fitzy"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886580,
+            "round": 1,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21021989,
+                  "name": "Project D | JoJo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21022386,
+                  "name": "Rishi"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875489,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21011889,
+                  "name": "netplayge | GUESS MONSTER"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21009679,
+                  "name": "reese"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886581,
+            "round": 1,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21009575,
+                  "name": "Free Agent | Trif"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21008547,
+                  "name": "L7 | Freezus"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875298,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967155,
+                  "name": "K8A"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21008162,
+                  "name": "netplayge | :3"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886605,
+            "round": -3,
+            "fullRoundText": "Losers Round 1",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967165,
+                  "name": "Tazio"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21017984,
+                  "name": "regEx"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875297,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21023330,
+                  "name": "Brotherhood| | Foxy Grandpa"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21020737,
+                  "name": "Smylin"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92886579,
+            "round": 1,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967174,
+                  "name": "GabeGlitches"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875296,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20969865,
+                  "name": "HoG | Lati"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21024574,
+                  "name": "BigJoig"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875294,
+            "round": -7,
+            "fullRoundText": "Losers Round 5",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21008162,
+                  "name": "netplayge | :3"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21019145,
+                  "name": "mayo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875362,
+            "round": 4,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967154,
+                  "name": "Aklo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21011889,
+                  "name": "netplayge | GUESS MONSTER"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875299,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21009138,
+                  "name": "Level1 | max"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21021407,
+                  "name": "SRG | Hatsune Mitski"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875292,
+            "round": -7,
+            "fullRoundText": "Losers Round 5",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21018028,
+                  "name": "HoG | BINGHI"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21024574,
+                  "name": "BigJoig"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875293,
+            "round": -7,
+            "fullRoundText": "Losers Round 5",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21020737,
+                  "name": "Smylin"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20997203,
+                  "name": "Anchor"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875488,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21017984,
+                  "name": "regEx"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967157,
+                  "name": "Jib"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875172,
+            "round": 4,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21009138,
+                  "name": "Level1 | max"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21008547,
+                  "name": "L7 | Freezus"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875289,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21019145,
+                  "name": "mayo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21012114,
+                  "name": "Polaris"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875285,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21024574,
+                  "name": "BigJoig"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21019558,
+                  "name": "SRG | Moburu"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875487,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967165,
+                  "name": "Tazio"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21004801,
+                  "name": "kdog"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875286,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21020737,
+                  "name": "Smylin"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21013347,
+                  "name": "Jek"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875295,
+            "round": -7,
+            "fullRoundText": "Losers Round 5",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21021407,
+                  "name": "SRG | Hatsune Mitski"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21021835,
+                  "name": "Arc Gaming | WRAP"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875365,
+            "round": 4,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21022386,
+                  "name": "Rishi"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21017984,
+                  "name": "regEx"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875288,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21008162,
+                  "name": "netplayge | :3"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20978869,
+                  "name": "KingNut"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875490,
+            "round": -8,
+            "fullRoundText": "Losers Round 6",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21019373,
+                  "name": "LG | fitzy"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967156,
+                  "name": "Bigbuffalo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875281,
+            "round": -5,
+            "fullRoundText": "Losers Round 3",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21012114,
+                  "name": "Polaris"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21020630,
+                  "name": "DEI | Catsonthemoon"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875486,
+            "round": -7,
+            "fullRoundText": "Losers Round 5",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 20967156,
+                  "name": "Bigbuffalo"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967168,
+                  "name": "a horse who can drive"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875291,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21021441,
+                  "name": "ilovetristan99"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21021835,
+                  "name": "Arc Gaming | WRAP"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875290,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21021407,
+                  "name": "SRG | Hatsune Mitski"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21017822,
+                  "name": "Monika | Rocks"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875174,
+            "round": 4,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21011041,
+                  "name": "BLE | E-tie"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21023330,
+                  "name": "Brotherhood| | Foxy Grandpa"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875485,
+            "round": -7,
+            "fullRoundText": "Losers Round 5",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21011273,
+                  "name": "Brick"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21009679,
+                  "name": "reese"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875284,
+            "round": -6,
+            "fullRoundText": "Losers Round 4",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21018028,
+                  "name": "HoG | BINGHI"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21022674,
+                  "name": "UMF | stujin"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875278,
+            "round": -5,
+            "fullRoundText": "Losers Round 3",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21013347,
+                  "name": "Jek"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 21005229,
+                  "name": "spfinfini | karol"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 92875171,
+            "round": 4,
+            "fullRoundText": "Winners Quarter-Final",
+            "slots": [
+              {
+                "entrant": {
+                  "id": 21009575,
+                  "name": "Free Agent | Trif"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 2
+                    }
+                  }
+                }
+              },
+              {
+                "entrant": {
+                  "id": 20967155,
+                  "name": "K8A"
+                },
+                "standing": {
+                  "stats": {
+                    "score": {
+                      "value": 0
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "entrants": {
+        "nodes": [
+          {
+            "id": 21024776,
+            "standing": {
+              "placement": 97
+            }
+          },
+          {
+            "id": 21024612,
+            "standing": {
+              "placement": 97
+            }
+          },
+          {
+            "id": 21024574,
+            "standing": {
+              "placement": 13
+            }
+          },
+          {
+            "id": 21024468,
+            "standing": {
+              "placement": 65
+            }
+          },
+          {
+            "id": 21024127,
+            "standing": {
+              "placement": 65
+            }
+          },
+          {
+            "id": 21024066,
+            "standing": {
+              "placement": 33
+            }
+          },
+          {
+            "id": 21023834,
+            "standing": {
+              "placement": 65
+            }
+          },
+          {
+            "id": 21023632,
+            "standing": {
+              "placement": 65
+            }
+          },
+          {
+            "id": 21023407,
+            "standing": {
+              "placement": 65
+            }
+          },
+          {
+            "id": 21023330,
+            "standing": {
+              "placement": 5
+            }
+          }
+        ]
+      }
+    }
+  },
+  "extensions": {
+    "cacheControl": {
+      "version": 1,
+      "hints": [
+        {
+          "path": ["event"],
+          "maxAge": 60,
+          "scope": "PRIVATE"
+        }
+      ]
+    },
+    "queryComplexity": 771
+  },
+  "actionRecords": []
+}
