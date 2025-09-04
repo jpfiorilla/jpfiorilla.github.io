@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Start.gg Bracket Overlay</title>
+    <link rel="icon" href="images/favicon_slash.ico" type="image/x-icon" />
+    <style>
+      :root {
+        --antialias: -webkit-font-smoothing: antialiased;
+        --antialias-moz: -moz-osx-font-smoothing: grayscale;
+      }
+
+      .antialias {
+        -webkit-font-smoothing: var(--antialias);
+        -moz-osx-font-smoothing: var(--antialias-moz);
+      }
+
+      @font-face {
+        font-family: "Coolvetica";
+        src: url("fonts/Coolvetica Rg.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      /* Animation for new sets sliding in from the right */
+      @keyframes slideInHorizontal {
+        0% {
+          transform: translateX(120%);
+          opacity: 0;
+        }
+        100% {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      .set.new {
+        animation: slideInHorizontal 0.6s ease-out;
+      }
+
+      /* Animation for old sets sliding down */
+      @keyframes slideDownFade {
+        0% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(40px);
+          opacity: 0;
+        }
+      }
+
+      .set.removing {
+        animation: slideDownFade 0.4s ease-in forwards;
+      }
+
+      .mono {
+        font-family: "Courier New", monospace;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0d1b2a;
+        font-family: "Coolvetica", Arial, sans-serif;
+        color: #ffffff;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #tokenField {
+        display: flex;
+        flex-direction: column;
+        padding-top: 32px;
+      }
+
+      .overlay {
+        width: 100%;
+        height: 100%;
+        max-width: 640px;
+        max-height: 597px;
+        padding: 10px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .header {
+        font-weight: bold;
+        font-size: clamp(48px, 5vw, 64px);
+        text-align: center;
+        letter-spacing: 3px;
+        margin-bottom: 24px;
+        color: #ffffff;
+        display: none;
+      }
+
+      #setsContainer {
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        width: 100%;
+        justify-items: center;
+        min-height: 340px;
+      }
+
+      #setsContainer.fade-in {
+        animation: fadeIn 0.8s ease forwards;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .set {
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr auto;
+        align-items: center;
+        gap: 16px;
+        border-radius: 40px;
+        width: 95%;
+        font-size: clamp(20px, 1.5vw, 22px);
+        font-weight: bold;
+        position: relative;
+        /* background: #14253d; */
+        /* border: 3px solid #ff00aa; */
+        /* padding: 8px 12px; */
+      }
+
+      .set .set-background {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        top: 12px;
+        bottom: 12px;
+        z-index: -1;
+        background: #14253d;
+      }
+
+      .score {
+        width: clamp(40px, 6vw, 60px);
+        height: clamp(40px, 6vw, 60px);
+        border-radius: 50%;
+        border: 3px solid #ff00aa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(18px, 2vw, 28px);
+        font-weight: bold;
+        color: #ffffff;
+        background: #14253d;
+      }
+
+      .score.winner {
+        border-color: #22c55e;
+      }
+
+      .player-name {
+        flex: 1;
+        text-align: center;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 280px;
+        min-width: 60px;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .player-name span {
+        display: inline-block;
+        max-width: 100%;
+        font-size: 1em;
+        letter-spacing: 1px;
+        transform-origin: left center;
+      }
+
+      .player-name.left {
+        text-align: left;
+      }
+
+      .player-name.right {
+        text-align: right;
+        justify-self: right;
+      }
+
+      .vs {
+        font-size: 22px;
+        color: #cbd5e1;
+        padding: 0 10px;
+      }
+
+      .placement {
+        font-size: 14px;
+        color: #cbd5e1; /* similar to VS text */
+        opacity: 0.8;
+        text-align: center;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
+      }
+
+      .score {
+        width: clamp(40px, 6vw, 60px);
+        height: clamp(40px, 6vw, 60px);
+        border-radius: 50%;
+        border: 3px solid #F63C4C;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(24px, 2vw, 28px);
+        font-weight: bold;
+        color: #ffffff;
+      }
+
+      #headToHeadContainer {
+        display: none;
+        width: 100%;
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        min-height: 340px;
+      }
+
+      .footer {
+        display: none;
+        text-align: center;
+        margin-top: 12px;
+        font-size: 18px;
+        color: #cbd5e1;
+        opacity: 0.8;
+      }
+
+      .footer img {
+        height: 64px;
+        margin: 10px;
+        border-radius: 50%;
+      }
+
+      #configPanel {
+        margin-bottom: 20px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #configPanel.hidden {
+        display: none;
+      }
+
+      input {
+        min-width: 220px;
+        padding: 8px;
+        font-size: 18px;
+        border-radius: 6px;
+        border: 2px solid #334155;
+        background: #1e293b;
+        color: #fff;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 18px;
+        border-radius: 6px;
+        border: none;
+        background-color: #22c55e;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s ease;
+      }
+
+      button:hover {
+        background-color: #1da64d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="overlay">
+      <!-- Config Panel -->
+      <form id="configPanel">
+        <div id="tokenField">
+          <input
+            id="tokenInput"
+            placeholder="Paste Start.gg API Token"
+            type="password"
+          />
+          <a
+            href="https://developer.start.gg/docs/authentication"
+            target="_blank"
+            style="
+              color: #22c55e;
+              font-size: 14px;
+              margin-left: 8px;
+              text-decoration: none;
+            "
+          >
+            Need a token?
+          </a>
+          <br />
+        </div>
+        <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
+        <button type="submit">Start</button>
+      </form>
+
+      <!-- Header -->
+      <div class="header antialias">Recent Results</div>
+
+      <!-- Sets Container -->
+      <div id="setsContainer"></div>
+
+      <div
+        id="headToHeadContainer"
+        style="
+          display: none;
+          width: 100%;
+          flex: 1;
+          align-items: center;
+          justify-content: center;
+          min-height: 340px;
+        "
+      >
+        <!-- We'll inject H2H markup dynamically -->
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>In Partnership With</p>
+        <img src="images/nycmelee.jpg" alt="NYC Melee" />
+        <img src="images/osnyc.jpg" alt="Partner Logo" />
+      </div>
+    </div>
+
+    <script src="recent-sets-config.js"></script>
+    <script>
+      const API_URL = "https://api.start.gg/gql/alpha";
+      let lastSetIds = new Set();
+      let pollingInterval;
+      let entrantPlacements = {};
+
+      const params = new URLSearchParams(window.location.search);
+      let authToken =
+        params.get("token") ||
+        params.get("t") ||
+        window.STARTGG_TOKEN ||
+        localStorage.getItem("startggToken") ||
+        "";
+
+      if (authToken) document.getElementById("tokenInput").value = authToken;
+
+      let eventUrl =
+        params.get("url") || params.get("u") || window.STARTGG_URL || "";
+
+      if (authToken && eventUrl) {
+        document.getElementById("configPanel").classList.add("hidden");
+        startOverlay();
+      }
+
+      document
+        .getElementById("configPanel")
+        .addEventListener("submit", startOverlay);
+
+      async function fetchData(slug) {
+        const query = `
+          query EventSetsAndEntrants($slug: String!) {
+            event(slug: $slug) {
+              numEntrants
+              sets(perPage: 5, page: 1, sortType: RECENT) {
+                nodes {
+                  id
+                  round
+                  fullRoundText
+                  slots {
+                    entrant { id name }
+                    standing { stats { score { value } } }
+                  }
+                }
+              }
+              entrants(query: { perPage: 10 }) {
+                nodes {
+                  id
+                  standing { placement }
+                }
+              }
+            }
+          }
+        `;
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + authToken,
+          },
+          body: JSON.stringify({ query, variables: { slug } }),
+        });
+        const json = await res.json();
+        if (!json.data || json.errors) {
+          console.error("Error fetching data:", json.errors || json);
+          return { sets: [], entrants: [] };
+        }
+        return {
+          sets: json.data.event?.sets?.nodes || [],
+          entrants: json.data.event?.entrants?.nodes || [],
+          numEntrants: json.data.event?.numEntrants || 0,
+        };
+      }
+
+      function buildEntrantPlacementMap(entrants) {
+        entrantPlacements = {};
+        entrants.forEach((entrant) => {
+          if (entrant?.id && entrant.standing?.placement) {
+            entrantPlacements[entrant.id] = entrant.standing.placement;
+          }
+        });
+      }
+
+      function fitText(element) {
+        const span = element.querySelector("span");
+        if (!span) return;
+        let scale = 1;
+        span.style.transform = "scale(1)";
+        if (span.scrollWidth > element.clientWidth) {
+          scale = element.clientWidth / span.scrollWidth;
+          span.style.transform = `scale(${scale})`;
+        }
+      }
+
+      function adjustPlayerNames() {
+        document.querySelectorAll(".player-name").forEach(fitText);
+      }
+
+      function formatRound(set) {
+        if (!set) return "VS";
+        const txt = (set.fullRoundText || "").toLowerCase();
+        const N = tournamentInfo.bracketSize || 2;
+
+        // Finals
+        if (txt.includes("grand final")) return "GF";
+        if (txt.includes("losers final")) return "LF";
+        if (txt.includes("winners final")) return "WF";
+
+        // Semis / Quarters
+        if (txt.includes("winners semi")) return "WSF";
+        if (txt.includes("losers semi")) return "LSF";
+        if (txt.includes("winners quarter")) return "WQF";
+        if (txt.includes("losers quarter")) return "LQF";
+
+        // If we have a numeric round from set.round, use that
+        const r = set.round;
+        if (typeof r === "number") {
+          if (r > 0) {
+            // Winners: round 1 = Top N, round 2 = Top N/2, etc.
+            const topN = N / Math.pow(2, r - 1);
+            return `W.T${topN}`;
+          }
+          if (r < 0) {
+            // Losers: rounds come in pairs
+            const k = Math.abs(r);
+            const index = Math.ceil(k / 2);
+            const topN = N / Math.pow(2, index - 1);
+            return `L.T${topN}`;
+          }
+        }
+
+        return "VS";
+      }
+
+      function extractTopNumber(text) {
+        // Example text: "losers round 3" or "winners round 4"
+        const match = text.match(/(\d+)/);
+        if (!match) return "";
+        const roundNum = parseInt(match[1]);
+
+        // Convert to Top N (approx)
+        // Round 1 -> Top 32, Round 2 -> Top 16, Round 3 -> Top 8, etc.
+        return Math.pow(2, Math.max(0, 6 - roundNum)); // assuming double elim ~64 base
+      }
+
+      function renderHeadToHead() {
+        const h2h = document.getElementById("headToHeadContainer");
+        const latestSet = lastRenderedSets?.[0]; // We'll store this in renderSets()
+        if (!latestSet) {
+          h2h.innerHTML = "<p style='opacity:0.8;'>No data yet</p>";
+          return;
+        }
+
+        const [p1, p2] = latestSet.slots;
+        const p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
+        const p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
+
+        h2h.innerHTML = `
+          <div style="
+            display: flex; 
+            flex-direction: row; 
+            justify-content: space-around; 
+            width: 100%; 
+            font-size: 32px;
+            font-weight: bold;
+          ">
+            <div style="text-align:right; flex:1;">
+              ${p1?.entrant?.name || "TBD"}
+              <div style="font-size:64px; color:#22c55e;">${
+                isNaN(p1Score) ? "-" : p1Score
+              }</div>
+            </div>
+            <div style="margin: 0 20px; font-size: 48px; color:#cbd5e1;">VS</div>
+            <div style="text-align:left; flex:1;">
+              ${p2?.entrant?.name || "TBD"}
+              <div style="font-size:64px; color:#22c55e;">${
+                isNaN(p2Score) ? "-" : p2Score
+              }</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function setsAreEqual(newSets, oldSets) {
+        if (newSets.length !== oldSets.length) return false;
+        for (let i = 0; i < newSets.length; i++) {
+          const n = newSets[i],
+            o = oldSets[i];
+          if (n.id !== o.id) return false;
+
+          const nScores = n.slots.map(
+            (s) => s?.standing?.stats?.score?.value || "-"
+          );
+          const oScores = o.slots.map(
+            (s) => s?.standing?.stats?.score?.value || "-"
+          );
+          if (nScores[0] !== oScores[0] || nScores[1] !== oScores[1])
+            return false;
+        }
+        return true;
+      }
+
+      let isFirstRender = true;
+      let lastRenderedSets = [];
+      function renderSets(sets) {
+        if (setsAreEqual(sets.slice(0, 4), lastRenderedSets.slice(0, 4))) {
+          return;
+        }
+
+        if (isFirstRender && sets.length > 0) {
+          document.querySelector(".header").style.display = "block";
+          document.getElementById("setsContainer").style.display = "grid";
+          document.querySelector(".footer").style.display = "block";
+        }
+
+        const container = document.getElementById("setsContainer");
+        const existingSetEls = Array.from(container.querySelectorAll(".set"));
+        const newSetIds = sets.slice(0, 4).map((s) => s.id);
+
+        // Remove sets that no longer exist
+        existingSetEls.forEach((el) => {
+          const id = el.dataset.id;
+          if (!newSetIds.includes(id)) {
+            el.remove();
+          }
+        });
+
+        // Add new sets that aren't already shown
+        sets.slice(0, 4).forEach((set) => {
+          if (!container.querySelector(`.set[data-id="${set.id}"]`)) {
+            const div = document.createElement("div");
+            div.className = "set";
+            div.dataset.id = set.id;
+
+            if (!isFirstRender) {
+              div.classList.add("new");
+              setTimeout(() => div.classList.remove("new"), 600);
+            }
+
+            const [p1, p2] = set.slots;
+            let p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
+            let p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
+
+            // Handle DQ logic
+            if (p1Score === -1) {
+              p1Score = "DQ";
+              p2Score = "W";
+            } else if (p2Score === -1) {
+              p2Score = "DQ";
+              p1Score = "W";
+            }
+
+            let p1Class = "player-name left";
+            let p2Class = "player-name right";
+            let loserId = null;
+            if (!isNaN(parseInt(p1Score)) && !isNaN(parseInt(p2Score))) {
+              if (parseInt(p1Score) > parseInt(p2Score)) {
+                loserId = p2?.entrant?.id;
+              } else if (parseInt(p2Score) > parseInt(p1Score)) {
+                loserId = p1?.entrant?.id;
+              }
+            }
+
+            const getOrdinal = (num) => {
+              if (!num) return "";
+              const s = ["th", "st", "nd", "rd"];
+              const v = num % 100;
+              return num + (s[(v - 20) % 10] || s[v] || s[0]);
+            };
+
+            let p1PlacementText = "";
+            let p2PlacementText = "";
+            if (
+              loserId &&
+              (set.round < 0 ||
+                (set.fullRoundText &&
+                  set.fullRoundText.toLowerCase().includes("grand final")))
+            ) {
+              const placement = entrantPlacements[loserId];
+              if (placement) {
+                const text = getOrdinal(placement);
+                if (loserId === p1?.entrant?.id) {
+                  p1PlacementText = text;
+                } else if (loserId === p2?.entrant?.id) {
+                  p2PlacementText = text;
+                }
+              }
+            }
+
+            const p1ScoreClass = `score${
+              p1Score === "W" || p1Score > p2Score ? " winner" : ""
+            }`;
+            const p2ScoreClass = `score${
+              p2Score === "W" || p2Score > p1Score ? " winner" : ""
+            }`;
+
+            div.innerHTML = `
+            <div class="${p1ScoreClass}">${p1Score}</div>
+            <div class="${p1Class}">
+              <span>${p1?.entrant?.name || "TBD"}</span>
+              ${
+                p1PlacementText
+                  ? `<div class="placement">(${p1PlacementText})</div>`
+                  : ""
+              }
+            </div>
+            <div class="vs mono">${formatRound(set)}</div>
+            <div class="${p2Class}">
+              ${
+                p2PlacementText
+                  ? `<div class="placement">(${p2PlacementText})</div>`
+                  : ""
+              }
+              <span>${p2?.entrant?.name || "TBD"}</span>
+            </div>
+            <div class="${p2ScoreClass}">${p2Score}</div>
+            <div class="set-background"></div>
+          `;
+
+            container.appendChild(div);
+          }
+        });
+      }
+
+      function extractSlugFromUrl(url) {
+        const match = url.match(
+          /start\.gg\/tournament\/([^\/]+)\/event\/([^\/]+)/
+        );
+        if (match) {
+          return `tournament/${match[1]}/event/${match[2]}`;
+        } else {
+          alert(
+            "Could not extract event slug from URL. .sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
+          );
+          return null;
+        }
+      }
+
+      let tournamentInfo = { entrantsCount: 0 };
+
+      function buildTournamentInfo(numEntrants) {
+        const powerOfTwo = 1 << Math.ceil(Math.log2(numEntrants));
+        tournamentInfo = {
+          entrantsCount: numEntrants,
+          bracketSize: powerOfTwo,
+        };
+      }
+
+      function startOverlay(e) {
+        if (e) e.preventDefault();
+
+        if (!authToken) {
+          authToken = document.getElementById("tokenInput").value.trim();
+          if (!authToken) {
+            alert("Please enter your Start.gg API token.");
+            return;
+          }
+          localStorage.setItem("startggToken", authToken);
+        }
+
+        if (!eventUrl) {
+          eventUrl = document.getElementById("urlInput").value.trim();
+          if (!eventUrl) {
+            alert("Please enter a Start.gg event URL.");
+            return;
+          }
+        }
+
+        const slug = extractSlugFromUrl(eventUrl);
+        if (!slug) return;
+
+        document.getElementById("configPanel").classList.add("hidden");
+
+        if (window.ENABLE_POLLING !== false) {
+          if (pollingInterval) clearInterval(pollingInterval);
+          pollingInterval = setInterval(async () => {
+            const { sets, entrants, numEntrants } = await fetchData(slug);
+            buildEntrantPlacementMap(entrants);
+            buildTournamentInfo(numEntrants);
+            renderSets(sets);
+          }, 5000);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          if (window.ENABLE_DEV_HEAD_TO_HEAD) {
+            // document.getElementById("toggleH2H").style.display = "block";
+          }
+
+          let showingH2H = false;
+          document.getElementById("toggleH2H").addEventListener("click", () => {
+            showingH2H = !showingH2H;
+
+            const setsContainer = document.getElementById("setsContainer");
+            const h2hContainer = document.getElementById("headToHeadContainer");
+            const header = document.querySelector(".header");
+
+            if (showingH2H) {
+              setsContainer.style.display = "none";
+              h2hContainer.style.display = "flex";
+              header.textContent = "Head to Head";
+              renderHeadToHead();
+            } else {
+              setsContainer.style.display = "grid";
+              h2hContainer.style.display = "none";
+              header.textContent = "Recent Results";
+            }
+          });
+        });
+
+        (async () => {
+          const { sets, entrants, numEntrants } = await fetchData(slug);
+          buildEntrantPlacementMap(entrants);
+          buildTournamentInfo(numEntrants);
+          renderSets(sets);
+        })();
+      }
+    </script>
+    <button
+      id="toggleH2H"
+      style="
+        position: fixed;
+        bottom: 12px;
+        right: 12px;
+        background: #22c55e;
+        color: #0d1b2a;
+        font-weight: bold;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 16px;
+        cursor: pointer;
+        display: none;
+      "
+    >
+      Toggle H2H
+    </button>
+  </body>
+</html>
