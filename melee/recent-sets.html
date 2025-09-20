@@ -395,6 +395,14 @@
           query EventSetsAndEntrants($slug: String!) {
             event(slug: $slug) {
               numEntrants
+              tournament {
+                id
+                name
+                images {
+                  url
+                  type
+                }
+              }
               sets(perPage: 5, page: 1, sortType: RECENT) {
                 nodes {
                   id
@@ -434,6 +442,9 @@
         }
 
         document.getElementById("startggErrorMessage").innerHTML = "";
+
+        // Store tournament information
+        currentTournament = json.data.event?.tournament || null;
 
         return {
           sets: json.data.event?.sets?.nodes || [],
@@ -653,7 +664,20 @@
                   <div class="player-name left">
                     <span>${extractPlayerTag(setP1?.entrant?.name)}</span>
                   </div>
-                  <div class="vs mono">${formatRound(set)}</div>
+                  <div class="vs mono" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+                    ${
+                      currentTournament &&
+                      currentTournament.images &&
+                      currentTournament.images.length > 0
+                        ? `
+                          <img src="${
+                            currentTournament.images[0].url
+                          }" style="width: 24px; height: 24px; border-radius: 4px;" alt="Tournament" />
+                          <div style="font-size: 10px; color: #94a3b8;">${new Date().toLocaleDateString()}</div>
+                        `
+                        : formatRound(set)
+                    }
+                  </div>
                   <div class="player-name right">
                     <span>${extractPlayerTag(setP2?.entrant?.name)}</span>
                   </div>
@@ -842,6 +866,7 @@
       }
 
       let tournamentInfo = { entrantsCount: 0 };
+      let currentTournament = null;
 
       function buildTournamentInfo(numEntrants) {
         const powerOfTwo = 1 << Math.ceil(Math.log2(numEntrants));
