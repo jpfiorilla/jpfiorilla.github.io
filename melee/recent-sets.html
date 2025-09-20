@@ -189,9 +189,11 @@
       .player-name span {
         display: inline-block;
         max-width: 100%;
-        font-size: 1em;
+        font-size: clamp(0.7rem, 2.5vw, 1rem);
         letter-spacing: 1px;
-        transform-origin: left center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .player-name.left {
@@ -438,21 +440,6 @@
             entrantPlacements[entrant.id] = entrant.standing.placement;
           }
         });
-      }
-
-      function fitText(element) {
-        const span = element.querySelector("span");
-        if (!span) return;
-        let scale = 1;
-        span.style.transform = "scale(1)";
-        if (span.scrollWidth > element.clientWidth) {
-          scale = element.clientWidth / span.scrollWidth;
-          span.style.transform = `scale(${scale})`;
-        }
-      }
-
-      function adjustPlayerNames() {
-        document.querySelectorAll(".player-name").forEach(fitText);
       }
 
       function formatRound(set) {
