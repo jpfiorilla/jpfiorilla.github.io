@@ -748,7 +748,21 @@
                   : ""
               }
             </div>
-            <div class="vs mono">${formatRound(set)}</div>
+            <div class="vs mono">${
+              targetContainer.id === "headToHeadContainer" &&
+              currentTournament &&
+              currentTournament.images &&
+              currentTournament.images.length > 0
+                ? `
+                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+                    <img src="${
+                      currentTournament.images[0].url
+                    }" style="width: 24px; height: 24px; border-radius: 4px;" alt="Tournament" />
+                    <div style="font-size: 10px; color: #94a3b8;">${new Date().toLocaleDateString()}</div>
+                  </div>
+                `
+                : formatRound(set)
+            }</div>
             <div class="${p2Class}">
               ${
                 p2PlacementText
