@@ -229,8 +229,11 @@
 
       #headToHeadContainer {
         display: none;
+        flex-direction: column;
+        gap: 8px;
         width: 100%;
-        flex: 1;
+        align-items: center;
+        min-height: 340px;
         opacity: 0;
         transition: opacity 0.5s ease-in-out;
       }
@@ -344,7 +347,6 @@
           width: 100%;
           flex: 1;
           align-items: center;
-          justify-content: center;
           min-height: 340px;
         "
       >
@@ -662,8 +664,9 @@
             })
             .join("");
 
+          // Clear the container and add the header
           h2h.innerHTML = `
-            <div style="text-align: center; margin-bottom: 20px;">
+            <div style="text-align: center;">
               <h3 style="color: #ffffff; margin: 0 0 10px 0; font-size: 24px;">
                 ${extractPlayerTag(p1?.entrant?.name)} vs ${extractPlayerTag(
             p2?.entrant?.name
@@ -671,9 +674,7 @@
               </h3>
               <p style="color: #cbd5e1; margin: 0; opacity: 0.8;">Match History</p>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; justify-items: center;">
-              ${matchHistoryHTML}
-            </div>
+            ${matchHistoryHTML}
           `;
         } catch (error) {
           console.error("Error loading head-to-head data:", error);
