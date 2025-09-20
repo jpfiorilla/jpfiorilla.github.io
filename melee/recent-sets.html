@@ -107,7 +107,7 @@
         display: none;
       }
 
-      #setsContainer {
+      .setsContainer {
         display: none;
         grid-template-columns: 1fr;
         gap: 8px;
@@ -118,8 +118,24 @@
         transition: opacity 0.5s ease-in-out;
       }
 
-      #setsContainer.fade-out {
+      .setsContainer.fade-out {
         opacity: 0;
+      }
+
+      .h2hContainer {
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        width: 100%;
+        justify-items: center;
+        min-height: 340px;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+        align-content: start;
+      }
+
+      .h2hContainer.fade-in {
+        opacity: 1;
       }
 
       .set {
@@ -227,23 +243,9 @@
         color: #ffffff;
       }
 
-      #headToHeadContainer {
-        display: none;
-        flex-direction: column;
-        gap: 8px;
-        width: 100%;
-        align-items: center;
-        min-height: 340px;
-        opacity: 0;
-        transition: opacity 0.5s ease-in-out;
-      }
-
-      #headToHeadContainer.fade-in {
-        opacity: 1;
-      }
 
       .winner {
-        color: #22c55e !important;
+        color: #ffffff !important;
         font-weight: bold;
       }
 
@@ -338,18 +340,9 @@
       <div class="header antialias">Recent Results</div>
 
       <!-- Sets Container -->
-      <div id="setsContainer"></div>
+      <div id="setsContainer" class="setsContainer"></div>
 
-      <div
-        id="headToHeadContainer"
-        style="
-          display: none;
-          width: 100%;
-          flex: 1;
-          align-items: center;
-          min-height: 340px;
-        "
-      >
+      <div id="headToHeadContainer" class="h2hContainer" style="display: none">
         <!-- We'll inject H2H markup dynamically -->
       </div>
 
@@ -511,8 +504,12 @@
           setsContainer.classList.add("fade-out");
           setTimeout(() => {
             setsContainer.style.display = "none";
-            h2hContainer.style.display = "flex";
+            h2hContainer.style.display = "grid";
             header.textContent = "Match History";
+            console.log(
+              "Switching to H2H, container display:",
+              h2hContainer.style.display
+            );
             renderHeadToHead();
             setTimeout(() => {
               h2hContainer.classList.add("fade-in");
@@ -590,19 +587,10 @@
         const p1Id = p1?.entrant?.id;
         const p2Id = p2?.entrant?.id;
 
-        console.log("Player IDs:", { p1Id, p2Id });
-        console.log("Player names:", {
-          p1Name: p1?.entrant?.name,
-          p2Name: p2?.entrant?.name,
-        });
-
         if (!p1Id || !p2Id) {
           h2h.innerHTML = "<p style='opacity:0.8;'>Player data unavailable</p>";
           return;
         }
-
-        // Show loading state
-        h2h.innerHTML = "<p style='opacity:0.8;'>Loading match history...</p>";
 
         try {
           // Fetch head-to-head data
@@ -622,84 +610,8 @@
             return;
           }
 
-          // Sort by most recent first and take up to 5
-          const recentSets = h2hSets
-            .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
-            .slice(0, 5);
-
-          // Build match history HTML using the same style as recent results
-          const matchHistoryHTML = recentSets
-            .map((set) => {
-              const [setP1, setP2] = set.slots;
-              let p1Score = parseInt(
-                setP1?.standing?.stats?.score?.value ?? "-"
-              );
-              let p2Score = parseInt(
-                setP2?.standing?.stats?.score?.value ?? "-"
-              );
-
-              // Handle DQ logic
-              if (p1Score === -1) {
-                p1Score = "DQ";
-                p2Score = "W";
-              } else if (p2Score === -1) {
-                p2Score = "DQ";
-                p1Score = "W";
-              }
-
-              // Determine winner classes
-              let p1ScoreClass = "score";
-              let p2ScoreClass = "score";
-              if (!isNaN(parseInt(p1Score)) && !isNaN(parseInt(p2Score))) {
-                if (parseInt(p1Score) > parseInt(p2Score)) {
-                  p1ScoreClass += " winner";
-                } else if (parseInt(p2Score) > parseInt(p1Score)) {
-                  p2ScoreClass += " winner";
-                }
-              }
-
-              return `
-                <div class="set" style="margin-bottom: 8px;">
-                  <div class="${p1ScoreClass}">${p1Score}</div>
-                  <div class="player-name left">
-                    <span>${extractPlayerTag(setP1?.entrant?.name)}</span>
-                  </div>
-                  <div class="vs mono" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
-                    ${
-                      currentTournament &&
-                      currentTournament.images &&
-                      currentTournament.images.length > 0
-                        ? `
-                          <img src="${
-                            currentTournament.images[0].url
-                          }" style="width: 24px; height: 24px; border-radius: 4px;" alt="Tournament" />
-                          <div style="font-size: 10px; color: #94a3b8;">${new Date().toLocaleDateString()}</div>
-                        `
-                        : formatRound(set)
-                    }
-                  </div>
-                  <div class="player-name right">
-                    <span>${extractPlayerTag(setP2?.entrant?.name)}</span>
-                  </div>
-                  <div class="${p2ScoreClass}">${p2Score}</div>
-                  <div class="set-background"></div>
-                </div>
-              `;
-            })
-            .join("");
-
-          // Clear the container and add the header
-          h2h.innerHTML = `
-            <div style="text-align: center;">
-              <h3 style="color: #ffffff; margin: 0 0 10px 0; font-size: 24px;">
-                ${extractPlayerTag(p1?.entrant?.name)} vs ${extractPlayerTag(
-            p2?.entrant?.name
-          )}
-              </h3>
-              <p style="color: #cbd5e1; margin: 0; opacity: 0.8;">Match History</p>
-            </div>
-            ${matchHistoryHTML}
-          `;
+          // Use the existing renderSets function with head-to-head data (limit to 4)
+          renderSets(h2hSets.slice(0, 4), h2h);
         } catch (error) {
           console.error("Error loading head-to-head data:", error);
           h2h.innerHTML =
@@ -728,19 +640,25 @@
 
       let isFirstRender = true;
       let lastRenderedSets = [];
-      function renderSets(sets) {
+      function renderSets(sets, container = null) {
         if (setsAreEqual(sets.slice(0, 4), lastRenderedSets.slice(0, 4))) {
           return;
         }
 
         if (isFirstRender && sets.length > 0) {
           document.querySelector(".header").style.display = "block";
-          document.getElementById("setsContainer").style.display = "grid";
+          // Only set display to grid if we're rendering to the main sets container
+          if (!container || container.id === "setsContainer") {
+            document.getElementById("setsContainer").style.display = "grid";
+          }
           document.querySelector(".footer").style.display = "block";
         }
 
-        const container = document.getElementById("setsContainer");
-        const existingSetEls = Array.from(container.querySelectorAll(".set"));
+        const targetContainer =
+          container || document.getElementById("setsContainer");
+        const existingSetEls = Array.from(
+          targetContainer.querySelectorAll(".set")
+        );
         const newSetIds = sets.slice(0, 4).map((s) => s.id);
 
         // Remove sets that no longer exist
@@ -753,7 +671,7 @@
 
         // Add new sets that aren't already shown
         sets.slice(0, 4).forEach((set) => {
-          if (!container.querySelector(`.set[data-id="${set.id}"]`)) {
+          if (!targetContainer.querySelector(`.set[data-id="${set.id}"]`)) {
             const div = document.createElement("div");
             div.className = "set";
             div.dataset.id = set.id;
@@ -843,7 +761,7 @@
             <div class="set-background"></div>
           `;
 
-            container.appendChild(div);
+            targetContainer.appendChild(div);
           }
         });
 
@@ -911,8 +829,15 @@
           }, 5000);
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
+        // Wait for config to load, then initialize
+        function initializeApp() {
           // Show/hide toggle button based on config
+          console.log("Config loaded:", {
+            SHOW_TOGGLE_BUTTON: window.SHOW_TOGGLE_BUTTON,
+            ENABLE_POLLING: window.ENABLE_POLLING,
+            STARTGG_TOKEN: window.STARTGG_TOKEN,
+            STARTGG_URL: window.STARTGG_URL,
+          });
           if (window.SHOW_TOGGLE_BUTTON) {
             document.getElementById("toggleH2H").style.display = "block";
           } else {
@@ -924,7 +849,10 @@
             showingH2H = !showingH2H;
             fadeToView(showingH2H ? "h2h" : "sets");
           });
-        });
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener("DOMContentLoaded", initializeApp);
 
         (async () => {
           const { sets, entrants, numEntrants } = await fetchData(slug);
