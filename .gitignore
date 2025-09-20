@@ -23,3 +23,4 @@ yarn-debug.log*
 yarn-error.log*
 
 /melee/recent-sets-config.js
+/public/melee/recent-sets-config.js
