@@ -443,6 +443,14 @@
         });
       }
 
+      function extractPlayerTag(entrantName) {
+        if (!entrantName) return "TBD";
+
+        // Split by | and take the last part (the tag)
+        const parts = entrantName.split("|");
+        return parts[parts.length - 1].trim();
+      }
+
       function formatRound(set) {
         if (!set) return "VS";
         const txt = (set.fullRoundText || "").toLowerCase();
@@ -512,14 +520,14 @@
             font-weight: bold;
           ">
             <div style="text-align:right; flex:1;">
-              ${p1?.entrant?.name || "TBD"}
+              ${extractPlayerTag(p1?.entrant?.name)}
               <div style="font-size:64px; color:#22c55e;">${
                 isNaN(p1Score) ? "-" : p1Score
               }</div>
             </div>
             <div style="margin: 0 20px; font-size: 48px; color:#cbd5e1;">VS</div>
             <div style="text-align:left; flex:1;">
-              ${p2?.entrant?.name || "TBD"}
+              ${extractPlayerTag(p2?.entrant?.name)}
               <div style="font-size:64px; color:#22c55e;">${
                 isNaN(p2Score) ? "-" : p2Score
               }</div>
@@ -644,7 +652,7 @@
             div.innerHTML = `
             <div class="${p1ScoreClass}">${p1Score}</div>
             <div class="${p1Class}">
-              <span>${p1?.entrant?.name || "TBD"}</span>
+              <span>${extractPlayerTag(p1?.entrant?.name)}</span>
               ${
                 p1PlacementText
                   ? `<div class="placement">(${p1PlacementText})</div>`
@@ -658,7 +666,7 @@
                   ? `<div class="placement">(${p2PlacementText})</div>`
                   : ""
               }
-              <span>${p2?.entrant?.name || "TBD"}</span>
+              <span>${extractPlayerTag(p2?.entrant?.name)}</span>
             </div>
             <div class="${p2ScoreClass}">${p2Score}</div>
             <div class="set-background"></div>
