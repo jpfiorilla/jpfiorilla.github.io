@@ -75,7 +75,16 @@
       }
 
       #startggErrorMessage {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
         font-size: 1.5rem;
+        padding: 8px;
+        box-sizing: border-box;
+        color: #f87171;
+        z-index: 10;
       }
 
       #tokenField {
@@ -422,7 +431,7 @@
           const errorMessage = `Start.gg error message: ${json.message}`;
           document.getElementById("startggErrorMessage").innerHTML =
             errorMessage;
-          return { sets: [], entrants: [] };
+          return { error: true };
         }
 
         document.getElementById("startggErrorMessage").innerHTML = "";
@@ -729,7 +738,9 @@
         if (window.ENABLE_POLLING !== false) {
           if (pollingInterval) clearInterval(pollingInterval);
           pollingInterval = setInterval(async () => {
-            const { sets, entrants, numEntrants } = await fetchData(slug);
+            const result = await fetchData(slug);
+            if (result.error) return;
+            const { sets, entrants, numEntrants } = result;
             buildEntrantPlacementMap(entrants);
             buildTournamentInfo(numEntrants);
             renderSets(sets);
@@ -763,7 +774,9 @@
         });
 
         (async () => {
-          const { sets, entrants, numEntrants } = await fetchData(slug);
+          const result = await fetchData(slug);
+          if (result.error) return;
+          const { sets, entrants, numEntrants } = result;
           buildEntrantPlacementMap(entrants);
           buildTournamentInfo(numEntrants);
           renderSets(sets);
