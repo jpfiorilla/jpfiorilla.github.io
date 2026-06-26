@@ -5,16 +5,6 @@
     <title>Start.gg Bracket Overlay</title>
     <link rel="icon" href="images/favicon_slash.ico" type="image/x-icon" />
     <style>
-      :root {
-        --antialias: -webkit-font-smoothing: antialiased;
-        --antialias-moz: -moz-osx-font-smoothing: grayscale;
-      }
-
-      .antialias {
-        -webkit-font-smoothing: var(--antialias);
-        -moz-osx-font-smoothing: var(--antialias-moz);
-      }
-
       @font-face {
         font-family: "Coolvetica";
         src: url("fonts/Coolvetica Rg.otf") format("opentype");
@@ -36,22 +26,6 @@
 
       .set.new {
         animation: slideInHorizontal 0.6s ease-out;
-      }
-
-      /* Animation for old sets sliding down */
-      @keyframes slideDownFade {
-        0% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        100% {
-          transform: translateY(40px);
-          opacity: 0;
-        }
-      }
-
-      .set.removing {
-        animation: slideDownFade 0.4s ease-in forwards;
       }
 
       .mono {
@@ -125,19 +99,6 @@
         min-height: 340px;
       }
 
-      #setsContainer.fade-in {
-        animation: fadeIn 0.8s ease forwards;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
-      }
-
       .set {
         display: grid;
         grid-template-columns: auto 1fr auto 1fr auto;
@@ -167,11 +128,11 @@
         width: clamp(40px, 6vw, 60px);
         height: clamp(40px, 6vw, 60px);
         border-radius: 50%;
-        border: 3px solid #ff00aa;
+        border: 3px solid #f63c4c;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: clamp(18px, 2vw, 28px);
+        font-size: clamp(24px, 2vw, 28px);
         font-weight: bold;
         color: #ffffff;
         background: #14253d;
@@ -228,28 +189,6 @@
         text-align: center;
         margin-top: 4px;
         letter-spacing: 0.5px;
-      }
-
-      .score {
-        width: clamp(40px, 6vw, 60px);
-        height: clamp(40px, 6vw, 60px);
-        border-radius: 50%;
-        border: 3px solid #F63C4C;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: clamp(24px, 2vw, 28px);
-        font-weight: bold;
-        color: #ffffff;
-      }
-
-      #headToHeadContainer {
-        display: none;
-        width: 100%;
-        flex: 1;
-        align-items: center;
-        justify-content: center;
-        min-height: 340px;
       }
 
       .footer {
@@ -335,24 +274,10 @@
       </form>
 
       <!-- Header -->
-      <div class="header antialias">Recent Results</div>
+      <div class="header">Recent Results</div>
 
       <!-- Sets Container -->
       <div id="setsContainer"></div>
-
-      <div
-        id="headToHeadContainer"
-        style="
-          display: none;
-          width: 100%;
-          flex: 1;
-          align-items: center;
-          justify-content: center;
-          min-height: 340px;
-        "
-      >
-        <!-- We'll inject H2H markup dynamically -->
-      </div>
 
       <!-- Footer -->
       <div class="footer">
@@ -365,7 +290,6 @@
     <script src="recent-sets-config.js"></script>
     <script>
       const API_URL = "https://api.start.gg/gql/alpha";
-      let lastSetIds = new Set();
       let pollingInterval;
       let entrantPlacements = {};
 
@@ -416,31 +340,37 @@
             }
           }
         `;
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + authToken,
-          },
-          body: JSON.stringify({ query, variables: { slug } }),
-        });
-        const json = await res.json();
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + authToken,
+            },
+            body: JSON.stringify({ query, variables: { slug } }),
+          });
+          const json = await res.json();
 
-        if (!json.data || json.success === false) {
-          console.error("Error fetching data: ", json.message || json);
-          const errorMessage = `Start.gg error message: ${json.message}`;
+          if (!json.data || json.success === false) {
+            console.error("Error fetching data: ", json.message || json);
+            document.getElementById("startggErrorMessage").innerHTML =
+              `Start.gg error message: ${json.message}`;
+            return { error: true };
+          }
+
+          document.getElementById("startggErrorMessage").innerHTML = "";
+
+          return {
+            sets: json.data.event?.sets?.nodes || [],
+            entrants: json.data.event?.entrants?.nodes || [],
+            numEntrants: json.data.event?.numEntrants || 0,
+          };
+        } catch (err) {
+          console.error("Network error fetching data: ", err);
           document.getElementById("startggErrorMessage").innerHTML =
-            errorMessage;
+            "Network error contacting Start.gg. Retrying…";
           return { error: true };
         }
-
-        document.getElementById("startggErrorMessage").innerHTML = "";
-
-        return {
-          sets: json.data.event?.sets?.nodes || [],
-          entrants: json.data.event?.entrants?.nodes || [],
-          numEntrants: json.data.event?.numEntrants || 0,
-        };
       }
 
       function buildEntrantPlacementMap(entrants) {
@@ -450,6 +380,20 @@
             entrantPlacements[entrant.id] = entrant.standing.placement;
           }
         });
+      }
+
+      function escapeHtml(str) {
+        return String(str).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
       }
 
       function extractPlayerTag(entrantName) {
@@ -496,172 +440,76 @@
         return "VS";
       }
 
-      function extractTopNumber(text) {
-        // Example text: "losers round 3" or "winners round 4"
-        const match = text.match(/(\d+)/);
-        if (!match) return "";
-        const roundNum = parseInt(match[1]);
-
-        // Convert to Top N (approx)
-        // Round 1 -> Top 32, Round 2 -> Top 16, Round 3 -> Top 8, etc.
-        return Math.pow(2, Math.max(0, 6 - roundNum)); // assuming double elim ~64 base
+      function getOrdinal(num) {
+        if (!num) return "";
+        const s = ["th", "st", "nd", "rd"];
+        const v = num % 100;
+        return num + (s[(v - 20) % 10] || s[v] || s[0]);
       }
 
-      function renderHeadToHead() {
-        const h2h = document.getElementById("headToHeadContainer");
-        const latestSet = lastRenderedSets?.[0]; // We'll store this in renderSets()
-        if (!latestSet) {
-          h2h.innerHTML = "<p style='opacity:0.8;'>No data yet</p>";
-          return;
-        }
-
-        const [p1, p2] = latestSet.slots;
-        const p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
-        const p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
-
-        h2h.innerHTML = `
-          <div style="
-            display: flex; 
-            flex-direction: row; 
-            justify-content: space-around; 
-            width: 100%; 
-            font-size: 32px;
-            font-weight: bold;
-          ">
-            <div style="text-align:right; flex:1;">
-              ${extractPlayerTag(p1?.entrant?.name)}
-              <div style="font-size:64px; color:#22c55e;">${
-                isNaN(p1Score) ? "-" : p1Score
-              }</div>
-            </div>
-            <div style="margin: 0 20px; font-size: 48px; color:#cbd5e1;">VS</div>
-            <div style="text-align:left; flex:1;">
-              ${extractPlayerTag(p2?.entrant?.name)}
-              <div style="font-size:64px; color:#22c55e;">${
-                isNaN(p2Score) ? "-" : p2Score
-              }</div>
-            </div>
-          </div>
-        `;
+      // A short string capturing everything we render for a set, so a poll
+      // that changed nothing can skip re-rendering entirely.
+      function setSignature(set) {
+        const scores = set.slots.map(
+          (s) => s?.standing?.stats?.score?.value ?? "-"
+        );
+        return `${set.id}:${scores.join("-")}`;
       }
 
-      function setsAreEqual(newSets, oldSets) {
-        if (newSets.length !== oldSets.length) return false;
-        for (let i = 0; i < newSets.length; i++) {
-          const n = newSets[i],
-            o = oldSets[i];
-          if (n.id !== o.id) return false;
+      function buildSetHtml(set) {
+        const [p1, p2] = set.slots;
+        let p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
+        let p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
 
-          const nScores = n.slots.map(
-            (s) => s?.standing?.stats?.score?.value || "-"
-          );
-          const oScores = o.slots.map(
-            (s) => s?.standing?.stats?.score?.value || "-"
-          );
-          if (nScores[0] !== oScores[0] || nScores[1] !== oScores[1])
-            return false;
-        }
-        return true;
-      }
-
-      let isFirstRender = true;
-      let lastRenderedSets = [];
-      function renderSets(sets) {
-        if (setsAreEqual(sets.slice(0, 4), lastRenderedSets.slice(0, 4))) {
-          return;
+        // Handle DQ logic
+        if (p1Score === -1) {
+          p1Score = "DQ";
+          p2Score = "W";
+        } else if (p2Score === -1) {
+          p2Score = "DQ";
+          p1Score = "W";
         }
 
-        if (isFirstRender && sets.length > 0) {
-          document.querySelector(".header").style.display = "block";
-          document.getElementById("setsContainer").style.display = "grid";
-          document.querySelector(".footer").style.display = "block";
-        }
-
-        const container = document.getElementById("setsContainer");
-        const existingSetEls = Array.from(container.querySelectorAll(".set"));
-        const newSetIds = sets.slice(0, 4).map((s) => s.id);
-
-        // Remove sets that no longer exist
-        existingSetEls.forEach((el) => {
-          const id = el.dataset.id;
-          if (!newSetIds.includes(id)) {
-            el.remove();
+        // Figure out the loser so we can show their final placement.
+        let loserId = null;
+        if (!isNaN(parseInt(p1Score)) && !isNaN(parseInt(p2Score))) {
+          if (parseInt(p1Score) > parseInt(p2Score)) {
+            loserId = p2?.entrant?.id;
+          } else if (parseInt(p2Score) > parseInt(p1Score)) {
+            loserId = p1?.entrant?.id;
           }
-        });
+        }
 
-        // Add new sets that aren't already shown
-        sets.slice(0, 4).forEach((set) => {
-          if (!container.querySelector(`.set[data-id="${set.id}"]`)) {
-            const div = document.createElement("div");
-            div.className = "set";
-            div.dataset.id = set.id;
-
-            if (!isFirstRender) {
-              div.classList.add("new");
-              setTimeout(() => div.classList.remove("new"), 600);
+        let p1PlacementText = "";
+        let p2PlacementText = "";
+        if (
+          loserId &&
+          (set.round < 0 ||
+            (set.fullRoundText &&
+              set.fullRoundText.toLowerCase().includes("grand final")))
+        ) {
+          const placement = entrantPlacements[loserId];
+          if (placement) {
+            const text = getOrdinal(placement);
+            if (loserId === p1?.entrant?.id) {
+              p1PlacementText = text;
+            } else if (loserId === p2?.entrant?.id) {
+              p2PlacementText = text;
             }
+          }
+        }
 
-            const [p1, p2] = set.slots;
-            let p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
-            let p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
+        const p1ScoreClass = `score${
+          p1Score === "W" || p1Score > p2Score ? " winner" : ""
+        }`;
+        const p2ScoreClass = `score${
+          p2Score === "W" || p2Score > p1Score ? " winner" : ""
+        }`;
 
-            // Handle DQ logic
-            if (p1Score === -1) {
-              p1Score = "DQ";
-              p2Score = "W";
-            } else if (p2Score === -1) {
-              p2Score = "DQ";
-              p1Score = "W";
-            }
-
-            let p1Class = "player-name left";
-            let p2Class = "player-name right";
-            let loserId = null;
-            if (!isNaN(parseInt(p1Score)) && !isNaN(parseInt(p2Score))) {
-              if (parseInt(p1Score) > parseInt(p2Score)) {
-                loserId = p2?.entrant?.id;
-              } else if (parseInt(p2Score) > parseInt(p1Score)) {
-                loserId = p1?.entrant?.id;
-              }
-            }
-
-            const getOrdinal = (num) => {
-              if (!num) return "";
-              const s = ["th", "st", "nd", "rd"];
-              const v = num % 100;
-              return num + (s[(v - 20) % 10] || s[v] || s[0]);
-            };
-
-            let p1PlacementText = "";
-            let p2PlacementText = "";
-            if (
-              loserId &&
-              (set.round < 0 ||
-                (set.fullRoundText &&
-                  set.fullRoundText.toLowerCase().includes("grand final")))
-            ) {
-              const placement = entrantPlacements[loserId];
-              if (placement) {
-                const text = getOrdinal(placement);
-                if (loserId === p1?.entrant?.id) {
-                  p1PlacementText = text;
-                } else if (loserId === p2?.entrant?.id) {
-                  p2PlacementText = text;
-                }
-              }
-            }
-
-            const p1ScoreClass = `score${
-              p1Score === "W" || p1Score > p2Score ? " winner" : ""
-            }`;
-            const p2ScoreClass = `score${
-              p2Score === "W" || p2Score > p1Score ? " winner" : ""
-            }`;
-
-            div.innerHTML = `
+        return `
             <div class="${p1ScoreClass}">${p1Score}</div>
-            <div class="${p1Class}">
-              <span>${extractPlayerTag(p1?.entrant?.name)}</span>
+            <div class="player-name left">
+              <span>${escapeHtml(extractPlayerTag(p1?.entrant?.name))}</span>
               ${
                 p1PlacementText
                   ? `<div class="placement">(${p1PlacementText})</div>`
@@ -669,21 +517,78 @@
               }
             </div>
             <div class="vs mono">${formatRound(set)}</div>
-            <div class="${p2Class}">
+            <div class="player-name right">
               ${
                 p2PlacementText
                   ? `<div class="placement">(${p2PlacementText})</div>`
                   : ""
               }
-              <span>${extractPlayerTag(p2?.entrant?.name)}</span>
+              <span>${escapeHtml(extractPlayerTag(p2?.entrant?.name))}</span>
             </div>
             <div class="${p2ScoreClass}">${p2Score}</div>
             <div class="set-background"></div>
           `;
+      }
 
-            container.appendChild(div);
-          }
+      let hasRenderedOnce = false;
+      let lastSignature = "";
+      function renderSets(sets) {
+        const top = sets.slice(0, 4);
+        const signature = top.map(setSignature).join("|");
+        if (signature === lastSignature) return; // nothing changed since last poll
+        lastSignature = signature;
+
+        // Reveal the overlay once the first batch of results arrives.
+        if (!hasRenderedOnce && top.length > 0) {
+          document.querySelector(".header").style.display = "block";
+          document.getElementById("setsContainer").style.display = "grid";
+          document.querySelector(".footer").style.display = "block";
+        }
+
+        const container = document.getElementById("setsContainer");
+        const newIds = top.map((s) => String(s.id));
+        const existingIds = new Set(
+          Array.from(container.querySelectorAll(".set")).map(
+            (el) => el.dataset.id
+          )
+        );
+
+        // Remove cards for sets no longer in the recent list.
+        container.querySelectorAll(".set").forEach((el) => {
+          if (!newIds.includes(el.dataset.id)) el.remove();
         });
+
+        // Add or update a card for each current set.
+        top.forEach((set) => {
+          const id = String(set.id);
+          const sig = setSignature(set);
+          let div = container.querySelector(`.set[data-id="${id}"]`);
+
+          if (!div) {
+            div = document.createElement("div");
+            div.className = "set";
+            div.dataset.id = id;
+            div.innerHTML = buildSetHtml(set);
+            // Slide genuinely-new sets in, but don't animate the first paint.
+            if (hasRenderedOnce && !existingIds.has(id)) {
+              div.classList.add("new");
+              setTimeout(() => div.classList.remove("new"), 600);
+            }
+            container.appendChild(div);
+          } else if (div.dataset.sig !== sig) {
+            // Score (or other content) changed — update in place.
+            div.innerHTML = buildSetHtml(set);
+          }
+          div.dataset.sig = sig;
+        });
+
+        // Keep DOM order matching the most-recent-first order from the API.
+        newIds.forEach((id) => {
+          const el = container.querySelector(`.set[data-id="${id}"]`);
+          if (el) container.appendChild(el);
+        });
+
+        hasRenderedOnce = true;
       }
 
       function extractSlugFromUrl(url) {
@@ -694,7 +599,7 @@
           return `tournament/${match[1]}/event/${match[2]}`;
         } else {
           alert(
-            "Could not extract event slug from URL. .sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
+            "Could not extract event slug from URL. Make sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
           );
           return null;
         }
@@ -747,32 +652,6 @@
           }, 5000);
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-          if (window.ENABLE_DEV_HEAD_TO_HEAD) {
-            // document.getElementById("toggleH2H").style.display = "block";
-          }
-
-          let showingH2H = false;
-          document.getElementById("toggleH2H").addEventListener("click", () => {
-            showingH2H = !showingH2H;
-
-            const setsContainer = document.getElementById("setsContainer");
-            const h2hContainer = document.getElementById("headToHeadContainer");
-            const header = document.querySelector(".header");
-
-            if (showingH2H) {
-              setsContainer.style.display = "none";
-              h2hContainer.style.display = "flex";
-              header.textContent = "Head to Head";
-              renderHeadToHead();
-            } else {
-              setsContainer.style.display = "grid";
-              h2hContainer.style.display = "none";
-              header.textContent = "Recent Results";
-            }
-          });
-        });
-
         (async () => {
           const result = await fetchData(slug);
           if (result.error) return;
@@ -783,23 +662,5 @@
         })();
       }
     </script>
-    <button
-      id="toggleH2H"
-      style="
-        position: fixed;
-        bottom: 12px;
-        right: 12px;
-        background: #22c55e;
-        color: #0d1b2a;
-        font-weight: bold;
-        border-radius: 6px;
-        padding: 8px 14px;
-        font-size: 16px;
-        cursor: pointer;
-        display: none;
-      "
-    >
-      Toggle H2H
-    </button>
   </body>
 </html>
