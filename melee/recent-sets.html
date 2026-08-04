@@ -625,25 +625,28 @@
       function startOverlay(e) {
         if (e) e.preventDefault();
 
+        // Always prefer what's currently typed in the form, so a corrected
+        // token or URL isn't ignored in favor of a stale cached value.
+        const typedToken = document.getElementById("tokenInput").value.trim();
+        if (typedToken) authToken = typedToken;
         if (!authToken) {
-          authToken = document.getElementById("tokenInput").value.trim();
-          if (!authToken) {
-            alert("Please enter your Start.gg API token.");
-            return;
-          }
-          localStorage.setItem("startggToken", authToken);
+          alert("Please enter your Start.gg API token.");
+          return;
         }
+        localStorage.setItem("startggToken", authToken);
 
+        const typedUrl = document.getElementById("urlInput").value.trim();
+        if (typedUrl) eventUrl = typedUrl;
         if (!eventUrl) {
-          eventUrl = document.getElementById("urlInput").value.trim();
-          if (!eventUrl) {
-            alert("Please enter a Start.gg event URL.");
-            return;
-          }
+          alert("Please enter a Start.gg event URL.");
+          return;
         }
 
         const slug = extractSlugFromUrl(eventUrl);
-        if (!slug) return;
+        if (!slug) {
+          eventUrl = "";
+          return;
+        }
 
         document.getElementById("configPanel").classList.add("hidden");
 
