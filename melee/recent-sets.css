@@ -335,67 +335,48 @@ button:disabled {
   background: #0d1b2a; /* page bg — reads as an inset against the card */
 }
 
-/* Supermajor-style banner: the players and their record are the
-   headline; the rows below are supporting detail. A 1fr/auto/1fr
-   grid keeps the record block dead-center regardless of how long
-   either player's tag is. */
-.history-record {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  column-gap: 18px;
-  width: 95%;
-  font-weight: bold;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
+/* Match History hierarchy: the overall record is the hero — a full-size
+   card built from the same classes as a Recent Results row — and the
+   individual history rows below it are rendered compact. All rules are
+   scoped to #matchHistoryContainer so Recent Results is untouched. */
+#matchHistoryContainer .set.compact {
+  font-size: 17px;
+  width: 78%; /* narrower than the hero card, centered by the grid */
 }
 
-.history-record .record-name {
-  font-size: 26px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+#matchHistoryContainer .set.compact .score {
+  width: 34px;
+  height: 34px;
+  border-width: 2px;
+  font-size: 17px;
 }
 
-.history-record .record-side {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  overflow: hidden;
-  min-width: 0; /* let 1fr sides shrink evenly so the dash stays centered */
-}
-
-.history-record .record-side.left {
-  justify-content: flex-end;
-}
-
-.history-record .record-side.right {
-  justify-content: flex-start;
-}
-
-/* Same ring system as the set score circles: green ring leads, red trails */
-.history-record .record-score {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 3px solid #f63c4c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: #ffffff;
-  background: #14253d;
-}
-
-.history-record .record-score.leading {
-  border-color: #22c55e;
-}
-
-.history-record .dash {
-  font-size: 26px;
+/* Names are the least important info in a history row (redundant with the
+   hero card) — dimmed so scores, tournament icon, and date read first. */
+#matchHistoryContainer .set.compact .player-name span {
+  font-size: 0.9rem;
   color: #cbd5e1;
-  opacity: 0.8;
+}
+
+#matchHistoryContainer .set.compact .set-background {
+  height: 38px; /* compact circle outer height: 34px + 2px borders */
+}
+
+#matchHistoryContainer .set.compact .history-center {
+  gap: 2px;
+  padding: 4px 9px;
+}
+
+#matchHistoryContainer .set.compact .history-center img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+#matchHistoryContainer .set.compact .history-date {
+  font-size: 13px;
+  color: #e2e8f0;
+  opacity: 1;
 }
 
 .history-center img {

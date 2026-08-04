@@ -857,25 +857,28 @@ function renderMatchHistory() {
     container.textContent = h2h.message;
     return;
   }
+  // The overall record renders as a full-size set-style card (the hero);
+  // the individual meetings below it are compact.
   const rec = h2h.record || { left: 0, right: 0 };
   container.innerHTML =
-    `<div class="history-record">
-      <span class="record-side left">
-        <span class="record-name">${escapeHtml(h2h.leftName)}</span>
-        <span class="record-score ${
-          rec.left > rec.right ? "leading" : ""
-        }">${rec.left}</span>
-      </span>
-      <span class="dash">–</span>
-      <span class="record-side right">
-        <span class="record-score ${
-          rec.right > rec.left ? "leading" : ""
-        }">${rec.right}</span>
-        <span class="record-name">${escapeHtml(h2h.rightName)}</span>
-      </span>
+    `<div class="set">
+      <div class="score${rec.left > rec.right ? " winner" : ""}">${
+      rec.left
+    }</div>
+      <div class="player-name left">
+        <span>${escapeHtml(h2h.leftName)}</span>
+      </div>
+      <div class="vs mono">VS</div>
+      <div class="player-name right">
+        <span>${escapeHtml(h2h.rightName)}</span>
+      </div>
+      <div class="score${rec.right > rec.left ? " winner" : ""}">${
+      rec.right
+    }</div>
+      <div class="set-background"></div>
     </div>` +
     h2h.sets
-      .map((s) => `<div class="set">${buildHistoryRowHtml(s)}</div>`)
+      .map((s) => `<div class="set compact">${buildHistoryRowHtml(s)}</div>`)
       .join("");
 }
 
