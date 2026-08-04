@@ -36,6 +36,11 @@ let eventUrl =
 
 if (eventUrl) document.getElementById("urlInput").value = eventUrl;
 
+// Optional starting view: ?view=history (default is recent results).
+// Match history for the featured set still has to load after startup, so
+// the view shows its placeholder until the background prefetch lands.
+if (params.get("view") === "history") currentView = "history";
+
 document
   .getElementById("configPanel")
   .addEventListener("submit", startOverlay);
@@ -355,10 +360,12 @@ function applyFetchResult(result) {
 
   const featuredId = latestSets[0] ? String(latestSets[0].id) : null;
   if (featuredId !== lastFeaturedSetId) {
-    lastFeaturedSetId = featuredId;
     // A new set just went on stream — its match history isn't loaded
-    // yet, so never linger on the history view.
-    if (currentView === "history") setViewAnimated("recent");
+    // yet, so never linger on the history view. The first fetch after
+    // startup isn't a set change (it must not override ?view=history).
+    const isFirstFetch = lastFeaturedSetId === null;
+    lastFeaturedSetId = featuredId;
+    if (!isFirstFetch && currentView === "history") setViewAnimated("recent");
   }
   prefetchMatchHistory();
   renderDebugPanel();

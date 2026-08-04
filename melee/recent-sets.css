@@ -363,20 +363,36 @@ button:disabled {
 }
 
 #matchHistoryContainer .set.compact .history-center {
-  gap: 2px;
+  position: relative;
+  gap: 0;
   padding: 4px 9px;
 }
 
 #matchHistoryContainer .set.compact .history-center img {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
 }
 
 #matchHistoryContainer .set.compact .history-date {
   font-size: 13px;
   color: #e2e8f0;
   opacity: 1;
+}
+
+/* Badge the date over the icon: the icon's bottom edge (4px chip padding
+   + 40px icon) crosses the date a third of the way down — rule of thirds.
+   Only applies when an icon is present — logo-less rows keep the date in
+   normal flow. */
+#matchHistoryContainer .set.compact .history-center img + .history-date {
+  position: absolute;
+  left: 50%;
+  top: calc(4px + 40px);
+  transform: translate(-50%, -33.4%);
+  white-space: nowrap;
+  background: #0d1b2a;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .history-center img {
