@@ -318,12 +318,94 @@
 
       #matchHistoryContainer {
         display: none;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        width: 100%;
+        justify-items: center;
+        min-height: 340px;
         text-align: center;
-        font-size: 22px;
+      }
+
+      .history-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #0d1b2a; /* page bg — reads as an inset against the card */
+      }
+
+      /* Supermajor-style banner: the players and their record are the
+         headline; the rows below are supporting detail. A 1fr/auto/1fr
+         grid keeps the record block dead-center regardless of how long
+         either player's tag is. */
+      .history-record {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: baseline;
+        column-gap: 18px;
+        width: 95%;
+        font-weight: bold;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+      }
+
+      .history-record .record-name {
+        font-size: 26px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .history-record .record-side {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        overflow: hidden;
+        min-width: 0; /* let 1fr sides shrink evenly so the dash stays centered */
+      }
+
+      .history-record .record-side.left {
+        justify-content: flex-end;
+      }
+
+      .history-record .record-side.right {
+        justify-content: flex-start;
+      }
+
+      .history-record .record-score {
+        font-size: 32px;
+        letter-spacing: 2px;
+      }
+
+      .history-record .leading {
+        color: #22c55e;
+      }
+
+      .history-record .dash {
+        font-size: 26px;
         color: #cbd5e1;
         opacity: 0.8;
-        letter-spacing: 1px;
-        padding: 24px 0;
+      }
+
+      .history-center img {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+
+      .history-center .history-date {
+        font-size: 14px;
+      }
+
+      /* View swap fade (Recent Results ↔ Match History) */
+      .header,
+      #setsContainer,
+      #matchHistoryContainer,
+      #waitingMessage {
+        transition: opacity 0.3s ease;
       }
     </style>
   </head>
@@ -414,6 +496,10 @@
       if (params.has("reset")) {
         localStorage.removeItem("startggToken");
         localStorage.removeItem("startggEventUrl");
+        // Also drop cached player set histories.
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("h2hSets:"))
+          .forEach((k) => localStorage.removeItem(k));
       }
 
       let authToken =
@@ -745,10 +831,536 @@
         }
       }
 
+      let lastFeaturedSetId = null;
       function applyFetchResult(result) {
+        latestSets = result.sets;
         buildTournamentInfo(result.numEntrants, result.maxPhaseOrder);
         renderSets(result.sets);
+
+        const featuredId = latestSets[0] ? String(latestSets[0].id) : null;
+        if (featuredId !== lastFeaturedSetId) {
+          lastFeaturedSetId = featuredId;
+          // A new set just went on stream — its match history isn't loaded
+          // yet, so never linger on the history view.
+          if (currentView === "history") setViewAnimated("recent");
+        }
+        prefetchMatchHistory();
         renderDebugPanel();
+      }
+
+      // --- Match history (head-to-head) data --------------------------
+      // start.gg has no dedicated H2H API; see fetchAllPairSets for the
+      // full-history walk that computes the true all-time record.
+
+      const MELEE_VIDEOGAME_ID = 1;
+      let latestSets = [];
+
+      async function gql(query, variables) {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + authToken,
+          },
+          body: JSON.stringify({ query, variables }),
+        });
+        const json = await res.json();
+        if (!json.data || json.errors) {
+          throw new Error(
+            json.errors?.[0]?.message || json.message || "start.gg error"
+          );
+        }
+        return json.data;
+      }
+
+      // The (player.id, user.id) pair for each slot of a set — the main
+      // polling query stays lean, so these are fetched on demand.
+      async function fetchSetPlayers(setId) {
+        const data = await gql(
+          `query SetPlayers($id: ID!) {
+            set(id: $id) {
+              slots {
+                seed { seedNum }
+                entrant {
+                  name
+                  participants { player { id } }
+                }
+              }
+            }
+          }`,
+          { id: setId }
+        );
+        return (data.set?.slots || []).map((slot) => {
+          const part = slot?.entrant?.participants?.[0];
+          return {
+            name: extractPlayerTag(slot?.entrant?.name),
+            playerId: part?.player?.id ?? null,
+            seedNum: slot?.seed?.seedNum ?? null,
+          };
+        });
+      }
+
+      // Full head-to-head record. start.gg has no working opponent filter
+      // (SetFilters.playerIds is ignored on Player.sets and OR-semantics on
+      // Event.sets), and event-list sampling misses old sets — so the
+      // reliable approach is to walk the ENTIRE set history of one player
+      // (slim fields, batched pages) and keep the sets where the other
+      // player fills the opposite slot. Validated against supermajor.gg.
+      const H2H_PAGE_SIZE = 85; // ~940 objects/request; the cap is 1000
+      const H2H_MAX_PAGES = 60; // 5100 sets — beyond any realistic rivalry
+      const H2H_BATCH = 4; // concurrent page requests per round
+
+      // Walked histories are expensive, so each player's completed sets are
+      // persisted in localStorage as [setId, dateSec, winnerPid, pidA, pidB]
+      // tuples. player.sets pages newest-first, so a later walk stops as
+      // soon as it reaches a set the (complete) cache already contains —
+      // one week's new sets cost ~one request.
+      const H2H_CACHE_PREFIX = "h2hSets:";
+      const H2H_CACHE_VERSION = 1;
+
+      function loadPlayerHistory(playerId) {
+        try {
+          const parsed = JSON.parse(
+            localStorage.getItem(H2H_CACHE_PREFIX + playerId)
+          );
+          return parsed?.v === H2H_CACHE_VERSION ? parsed : null;
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function savePlayerHistory(playerId, history) {
+        const write = () =>
+          localStorage.setItem(
+            H2H_CACHE_PREFIX + playerId,
+            JSON.stringify(history)
+          );
+        try {
+          write();
+        } catch (err) {
+          // Quota exceeded — evict least-recently-updated histories. The
+          // cache is only an optimization, so give up quietly if that fails.
+          try {
+            const entries = Object.keys(localStorage)
+              .filter((k) => k.startsWith(H2H_CACHE_PREFIX))
+              .map((k) => {
+                try {
+                  return { k, at: JSON.parse(localStorage.getItem(k)).updatedAt || 0 };
+                } catch (e) {
+                  return { k, at: 0 };
+                }
+              })
+              .sort((a, b) => a.at - b.at);
+            for (const e of entries) {
+              localStorage.removeItem(e.k);
+              try {
+                write();
+                return;
+              } catch (e) {}
+            }
+          } catch (e) {}
+        }
+      }
+
+      const H2H_WALK_QUERY = `
+        query PairWalk($pid: ID!, $page: Int!) {
+          player(id: $pid) {
+            sets(page: $page, perPage: ${H2H_PAGE_SIZE}) {
+              nodes {
+                id
+                winnerId
+                displayScore
+                completedAt
+                event { videogame { id } }
+                slots { entrant { id participants { player { id } } } }
+              }
+            }
+          }
+        }`;
+
+      // Turns one page of walk results into cache tuples. Keeps every
+      // completed singles Melee set (any opponent — the cache serves all
+      // future pairs involving this player); skips DQs and doubles.
+      function collectWalkPage(data, cachedIds, fresh) {
+        const nodes = data.player?.sets?.nodes || [];
+        let hitKnown = false;
+        for (const s of nodes) {
+          if (cachedIds.has(String(s.id))) {
+            hitKnown = true;
+            continue;
+          }
+          if (!s.winnerId || !s.completedAt) continue; // unfinished
+          if (s.event?.videogame?.id !== MELEE_VIDEOGAME_ID) continue;
+          const slots = s.slots || [];
+          // Singles only — doubles slots have two participants.
+          if (
+            slots.some((sl) => (sl?.entrant?.participants || []).length !== 1)
+          )
+            continue;
+          const ids = slots.map(
+            (sl) => sl?.entrant?.participants?.[0]?.player?.id
+          );
+          if (ids.length !== 2 || ids[0] == null || ids[1] == null) continue;
+          if (ids[0] === ids[1]) continue;
+          if ((s.displayScore || "").includes("DQ")) continue;
+          const winnerSlot = slots.find((sl) => sl?.entrant?.id === s.winnerId);
+          const winnerPid = winnerSlot?.entrant?.participants?.[0]?.player?.id;
+          if (winnerPid == null) continue;
+          fresh.push([String(s.id), s.completedAt, winnerPid, ids[0], ids[1]]);
+        }
+        return { pageSize: nodes.length, hitKnown };
+      }
+
+      // Full walk of one player's set history, incremental against the
+      // localStorage cache. Returns { complete, sets } (tuples, newest
+      // first). `knownTotal` skips the totals lookup when already known.
+      async function walkPlayerSets(playerId, knownTotal) {
+        const cached = loadPlayerHistory(playerId) || {
+          complete: false,
+          sets: [],
+        };
+        const cachedIds = new Set(cached.sets.map((s) => s[0]));
+        const fresh = [];
+        let complete;
+
+        if (cached.complete && cachedIds.size > 0) {
+          // Warm: page forward only until we reach already-cached sets.
+          let reachedEnd = false;
+          let hitKnown = false;
+          for (let page = 1; page <= H2H_MAX_PAGES && !hitKnown; page++) {
+            const res = collectWalkPage(
+              await gql(H2H_WALK_QUERY, { pid: playerId, page }),
+              cachedIds,
+              fresh
+            );
+            hitKnown = res.hitKnown;
+            if (res.pageSize < H2H_PAGE_SIZE) {
+              reachedEnd = true;
+              break;
+            }
+          }
+          complete = hitKnown || reachedEnd;
+        } else {
+          // Cold: total pages known up front, fetched in batches.
+          const total =
+            knownTotal ??
+            (
+              await gql(
+                `query Total($p: ID!) {
+                  player(id: $p) { sets(page: 1, perPage: 1) { pageInfo { total } } }
+                }`,
+                { p: playerId }
+              )
+            ).player?.sets?.pageInfo?.total ??
+            0;
+          const pages = Math.ceil(total / H2H_PAGE_SIZE);
+          complete = pages <= H2H_MAX_PAGES;
+          const capped = Math.min(pages, H2H_MAX_PAGES);
+          for (let start = 1; start <= capped; start += H2H_BATCH) {
+            const batch = [];
+            for (let p = start; p < start + H2H_BATCH && p <= capped; p++)
+              batch.push(p);
+            const responses = await Promise.all(
+              batch.map((page) =>
+                gql(H2H_WALK_QUERY, { pid: playerId, page })
+              )
+            );
+            responses.forEach((data) =>
+              collectWalkPage(data, cachedIds, fresh)
+            );
+          }
+        }
+
+        const freshIds = new Set(fresh.map((s) => s[0]));
+        const merged = fresh.concat(
+          cached.sets.filter((s) => !freshIds.has(s[0]))
+        );
+        merged.sort((a, b) => b[1] - a[1]);
+        const history = {
+          v: H2H_CACHE_VERSION,
+          complete,
+          updatedAt: Date.now(),
+          sets: merged,
+        };
+        savePlayerHistory(playerId, history);
+        return history;
+      }
+
+      // All completed singles Melee sets between the two players, newest
+      // first, as {setId, date, winnerPlayerId} — plus the win record.
+      // Every call re-checks page 1 (cheap when warm), so a rematch that
+      // just finished is always included.
+      async function fetchAllPairSets(p1, p2) {
+        // Prefer a player whose complete history is already cached — the
+        // incremental walk is ~1 request regardless of how many sets they
+        // have. Otherwise walk whoever has fewer total sets.
+        const c1 = loadPlayerHistory(p1.playerId);
+        const c2 = loadPlayerHistory(p2.playerId);
+        let walkId;
+        let knownTotal;
+        if (c1?.complete && !c2?.complete) walkId = p1.playerId;
+        else if (c2?.complete && !c1?.complete) walkId = p2.playerId;
+        else if (c1?.complete && c2?.complete) {
+          walkId =
+            c1.sets.length <= c2.sets.length ? p1.playerId : p2.playerId;
+        } else {
+          const totals = await gql(
+            `query Totals($a: ID!, $b: ID!) {
+              a: player(id: $a) { sets(page: 1, perPage: 1) { pageInfo { total } } }
+              b: player(id: $b) { sets(page: 1, perPage: 1) { pageInfo { total } } }
+            }`,
+            { a: p1.playerId, b: p2.playerId }
+          );
+          const totalA = totals.a?.sets?.pageInfo?.total ?? 0;
+          const totalB = totals.b?.sets?.pageInfo?.total ?? 0;
+          walkId = totalA <= totalB ? p1.playerId : p2.playerId;
+          knownTotal = Math.min(totalA, totalB);
+        }
+
+        const history = await walkPlayerSets(walkId, knownTotal);
+        const otherId =
+          walkId === p1.playerId ? p2.playerId : p1.playerId;
+        const pairSets = history.sets
+          .filter((s) => s[3] === otherId || s[4] === otherId)
+          .map((s) => ({
+            setId: s[0],
+            date: s[1] * 1000,
+            winnerPlayerId: s[2],
+          }));
+        const record = {};
+        pairSets.forEach((s) => {
+          record[s.winnerPlayerId] = (record[s.winnerPlayerId] || 0) + 1;
+        });
+        return { pairSets, record };
+      }
+
+      // Display details (round, tournament name/logo, scores) for specific
+      // sets, fetched in one aliased request.
+      async function fetchSetDetails(setIds) {
+        if (!setIds.length) return [];
+        const varDefs = setIds.map((_, i) => `$i${i}: ID!`).join(", ");
+        const body = setIds
+          .map(
+            (_, i) => `s${i}: set(id: $i${i}) {
+              id
+              completedAt
+              winnerId
+              fullRoundText
+              event {
+                startAt
+                tournament { name images(type: "profile") { url } }
+              }
+              slots {
+                entrant { id name participants { player { id } } }
+                standing { stats { score { value } } }
+              }
+            }`
+          )
+          .join("\n");
+        const data = await gql(
+          `query SetDetails(${varDefs}) { ${body} }`,
+          Object.fromEntries(setIds.map((id, i) => [`i${i}`, id]))
+        );
+        return setIds
+          .map((_, i) => data[`s${i}`])
+          .filter(Boolean)
+          .map((s) => ({
+            setId: String(s.id),
+            date: (s.completedAt || s.event?.startAt) * 1000,
+            tournament: s.event?.tournament?.name || "",
+            logoUrl: s.event?.tournament?.images?.[0]?.url || null,
+            round: s.fullRoundText,
+            players: (s.slots || []).map((sl) => ({
+              name: extractPlayerTag(sl?.entrant?.name),
+              playerId: sl?.entrant?.participants?.[0]?.player?.id ?? null,
+              score: parseInt(sl?.standing?.stats?.score?.value ?? "-"),
+              won: s.winnerId === sl?.entrant?.id,
+            })),
+          }));
+      }
+
+      // The record counts every completed set (including the featured one,
+      // matching supermajor.gg); the rendered rows are the last `limit`
+      // meetings BEFORE the featured set.
+      async function fetchHeadToHead(p1, p2, limit = 4, excludeSetId) {
+        if (!p1?.playerId || !p2?.playerId) return { sets: [], record: {} };
+        const { pairSets, record } = await fetchAllPairSets(p1, p2);
+        const rowIds = pairSets
+          .filter((s) => s.setId !== String(excludeSetId))
+          .slice(0, limit)
+          .map((s) => s.setId);
+        const sets = await fetchSetDetails(rowIds);
+        return { sets, record };
+      }
+
+      // Match history state. Loaded in the BACKGROUND whenever the featured
+      // set changes — the history view only ever renders already-loaded
+      // data, so a "loading…" state can never appear on stream. The future
+      // auto-phase timer must gate on matchHistoryReady().
+      let h2h = {
+        setId: null,
+        loading: false,
+        ready: false,
+        hasData: false,
+        sets: [],
+        record: { left: 0, right: 0 },
+        leftPlayerId: null,
+        leftName: "",
+        rightName: "",
+        message: "",
+      };
+
+      function matchHistoryReady() {
+        return (
+          h2h.ready &&
+          h2h.hasData &&
+          latestSets[0] &&
+          h2h.setId === String(latestSets[0].id)
+        );
+      }
+
+      function prefetchMatchHistory() {
+        const featured = latestSets[0];
+        if (!featured) return;
+        const id = String(featured.id);
+        // Already loaded or in flight for this set; a failed attempt
+        // (neither flag set) retries on the next poll.
+        if (h2h.setId === id && (h2h.ready || h2h.loading)) return;
+        h2h = {
+          setId: id,
+          loading: true,
+          ready: false,
+          hasData: false,
+          sets: [],
+          record: { left: 0, right: 0 },
+          leftPlayerId: null,
+          leftName: "",
+          rightName: "",
+          message: "",
+        };
+
+        (async () => {
+          try {
+            const players = await fetchSetPlayers(featured.id);
+            const [s1, s2] = players;
+            let sets = [];
+            let record = { left: 0, right: 0 };
+            let message = "";
+            let leftPlayerId = null;
+            let leftName = "";
+            let rightName = "";
+            if (!s1?.playerId || !s2?.playerId) {
+              message =
+                "Can't look up history — couldn't identify both players on start.gg.";
+            } else {
+              const h = await fetchHeadToHead(s1, s2, 4, featured.id);
+              sets = h.sets;
+              // Keep the same player on the same side in every row, matching
+              // the main view's convention: better seed (lower number) left.
+              leftPlayerId =
+                s1.seedNum != null &&
+                s2.seedNum != null &&
+                s2.seedNum < s1.seedNum
+                  ? s2.playerId
+                  : s1.playerId;
+              const [leftP, rightP] =
+                leftPlayerId === s1.playerId ? [s1, s2] : [s2, s1];
+              record = {
+                left: h.record[leftP.playerId] || 0,
+                right: h.record[rightP.playerId] || 0,
+              };
+              leftName = leftP.name;
+              rightName = rightP.name;
+              if (!sets.length) {
+                message = `No prior sets found between ${s1.name} and ${s2.name}.`;
+              }
+            }
+            if (h2h.setId !== id) return; // featured set moved on — discard
+            h2h = {
+              setId: id,
+              loading: false,
+              ready: true,
+              hasData: sets.length > 0,
+              sets,
+              record,
+              leftPlayerId,
+              leftName,
+              rightName,
+              message,
+            };
+          } catch (err) {
+            console.error("Match history error: ", err);
+            if (h2h.setId === id) h2h.loading = false; // retry next poll
+          }
+          if (currentView === "history") renderMatchHistory();
+          renderDebugPanel();
+        })();
+      }
+
+      function buildHistoryRowHtml(s) {
+        const a =
+          s.players.find((p) => p.playerId === h2h.leftPlayerId) ||
+          s.players[0];
+        const b = s.players.find((p) => p !== a);
+        if (!a || !b) return "";
+        const d = new Date(s.date);
+        const when = `${d.getMonth() + 1}/${d.getDate()}/${String(
+          d.getFullYear()
+        ).slice(-2)}`;
+        return `
+            <div class="score${a.won ? " winner" : ""}">${a.score}</div>
+            <div class="player-name left">
+              <span>${escapeHtml(a.name)}</span>
+            </div>
+            <div class="vs mono history-center">
+              ${
+                s.logoUrl
+                  ? `<img src="${escapeHtml(s.logoUrl)}" alt="${escapeHtml(
+                      s.tournament
+                    )}" title="${escapeHtml(s.tournament)}" />`
+                  : ""
+              }
+              <div class="history-date">${when}</div>
+            </div>
+            <div class="player-name right">
+              <span>${escapeHtml(b.name)}</span>
+            </div>
+            <div class="score${b.won ? " winner" : ""}">${b.score}</div>
+            <div class="set-background"></div>
+          `;
+      }
+
+      // Renders ONLY already-loaded data — never triggers a fetch.
+      function renderMatchHistory() {
+        const container = document.getElementById("matchHistoryContainer");
+        if (!h2h.ready) {
+          container.textContent = "Match history not loaded yet.";
+          return;
+        }
+        if (!h2h.hasData) {
+          container.textContent = h2h.message;
+          return;
+        }
+        const rec = h2h.record || { left: 0, right: 0 };
+        container.innerHTML =
+          `<div class="history-record">
+            <span class="record-side left">
+              <span class="record-name">${escapeHtml(h2h.leftName)}</span>
+              <span class="record-score ${
+                rec.left > rec.right ? "leading" : ""
+              }">${rec.left}</span>
+            </span>
+            <span class="dash">–</span>
+            <span class="record-side right">
+              <span class="record-score ${
+                rec.right > rec.left ? "leading" : ""
+              }">${rec.right}</span>
+              <span class="record-name">${escapeHtml(h2h.rightName)}</span>
+            </span>
+          </div>` +
+          h2h.sets
+            .map((s) => `<div class="set">${buildHistoryRowHtml(s)}</div>`)
+            .join("");
       }
 
       // Immediate refetch outside the polling cadence (debug scroll).
@@ -773,12 +1385,39 @@
           : "none";
         document.getElementById("matchHistoryContainer").style.display = recent
           ? "none"
-          : "block";
+          : "grid";
+        if (!recent) renderMatchHistory();
         document.getElementById("waitingMessage").style.display =
           recent && !document.querySelector("#setsContainer .set")
             ? "block"
             : "none";
         renderDebugPanel();
+      }
+
+      // Fade-out → swap → fade-in. Use this (not setView) for all swaps
+      // after startup, including the future auto-phase timer.
+      const VIEW_FADE_MS = 300;
+      let viewTransitioning = false;
+      function setViewAnimated(view) {
+        if (view === currentView) return;
+        if (viewTransitioning) {
+          setView(view); // mid-transition override (e.g. new set went live)
+          return;
+        }
+        viewTransitioning = true;
+        const els = [
+          document.querySelector(".header"),
+          document.getElementById("setsContainer"),
+          document.getElementById("matchHistoryContainer"),
+          document.getElementById("waitingMessage"),
+        ];
+        els.forEach((el) => (el.style.opacity = "0"));
+        setTimeout(() => {
+          setView(view);
+          void els[0].offsetHeight; // flush so the fade-in transitions
+          els.forEach((el) => (el.style.opacity = "1"));
+          setTimeout(() => (viewTransitioning = false), VIEW_FADE_MS);
+        }, VIEW_FADE_MS);
       }
 
       // Debug mode: toggled by the (OBS-hidden) button, or forced on with
@@ -794,6 +1433,15 @@
           `view: ${currentView}`,
           `scroll offset: ${setsOffset}`,
           `polling: ${pollingInterval ? "every 5s" : "off"}`,
+          `h2h: ${
+            h2h.loading
+              ? "loading"
+              : h2h.ready
+              ? h2h.hasData
+                ? "ready"
+                : "ready (no history)"
+              : "—"
+          }`,
           `fetches: ${debugState.fetchCount}`,
           `last fetch: ${debugState.lastFetch}`,
           `last result: ${debugState.lastResult}`,
@@ -810,7 +1458,7 @@
       }
 
       document.getElementById("swapViewBtn").addEventListener("click", () => {
-        setView(currentView === "recent" ? "history" : "recent");
+        setViewAnimated(currentView === "recent" ? "history" : "recent");
       });
 
       // Scroll a full screen (4 sets) at a time.
