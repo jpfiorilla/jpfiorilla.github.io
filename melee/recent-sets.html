@@ -327,6 +327,7 @@
                   fullRoundText
                   slots {
                     entrant { id name }
+                    seed { seedNum }
                     standing { stats { score { value } } }
                   }
                 }
@@ -457,7 +458,13 @@
       }
 
       function buildSetHtml(set) {
-        const [p1, p2] = set.slots;
+        // Show the better-seeded player (seed 1 is best) on the left.
+        let [p1, p2] = set.slots;
+        const p1Seed = p1?.seed?.seedNum;
+        const p2Seed = p2?.seed?.seedNum;
+        if (p1Seed != null && p2Seed != null && p2Seed < p1Seed) {
+          [p1, p2] = [p2, p1];
+        }
         let p1Score = parseInt(p1?.standing?.stats?.score?.value ?? "-");
         let p2Score = parseInt(p2?.standing?.stats?.score?.value ?? "-");
 
