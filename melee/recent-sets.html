@@ -182,15 +182,6 @@
         padding: 0 10px;
       }
 
-      .placement {
-        font-size: 14px;
-        color: #cbd5e1; /* similar to VS text */
-        opacity: 0.8;
-        text-align: center;
-        margin-top: 4px;
-        letter-spacing: 0.5px;
-      }
-
       .footer {
         display: none;
         text-align: center;
@@ -242,6 +233,98 @@
       button:hover {
         background-color: #1da64d;
       }
+
+      button:disabled {
+        background-color: #334155;
+        cursor: default;
+      }
+
+      #configError {
+        display: none;
+        color: #f87171;
+        font-size: 16px;
+        margin-top: 12px;
+        max-width: 340px;
+      }
+
+      #waitingMessage {
+        display: none;
+        text-align: center;
+        font-size: 22px;
+        color: #cbd5e1;
+        opacity: 0.8;
+        letter-spacing: 1px;
+        padding: 24px 0;
+      }
+
+      #streamControls {
+        position: fixed;
+        bottom: 12px;
+        right: 12px;
+        display: none;
+        gap: 8px;
+        z-index: 20;
+      }
+
+      #streamControls button {
+        font-size: 14px;
+        padding: 6px 12px;
+      }
+
+      #streamControls .secondary {
+        background-color: #334155;
+      }
+
+      #streamControls .secondary:hover {
+        background-color: #475569;
+      }
+
+      #debugPanel {
+        display: none;
+        position: fixed;
+        bottom: 12px;
+        left: 12px;
+        z-index: 30;
+        background: rgba(13, 27, 42, 0.95);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #cbd5e1;
+        text-align: left;
+      }
+
+      #debugInfo {
+        white-space: pre-line;
+      }
+
+      #debugActions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      #debugActions button {
+        font-size: 13px;
+        padding: 4px 10px;
+        background-color: #334155;
+      }
+
+      #debugActions button:hover {
+        background-color: #475569;
+      }
+
+      #matchHistoryContainer {
+        display: none;
+        text-align: center;
+        font-size: 22px;
+        color: #cbd5e1;
+        opacity: 0.8;
+        letter-spacing: 1px;
+        padding: 24px 0;
+      }
     </style>
   </head>
   <body>
@@ -271,6 +354,7 @@
         </div>
         <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
         <button type="submit">Start</button>
+        <div id="configError"></div>
       </form>
 
       <!-- Header -->
@@ -278,6 +362,13 @@
 
       <!-- Sets Container -->
       <div id="setsContainer"></div>
+
+      <!-- Match History (in development — reachable via debug view swap) -->
+      <div id="matchHistoryContainer">
+        <p>Match history view — under construction</p>
+      </div>
+
+      <div id="waitingMessage">Connected — waiting for completed sets…</div>
 
       <!-- Footer -->
       <div class="footer">
@@ -287,13 +378,44 @@
       </div>
     </div>
 
+    <!-- Setup helpers — never shown inside OBS -->
+    <div id="streamControls">
+      <button id="copyObsLinkBtn" type="button">Copy OBS link</button>
+      <button id="changeSetupBtn" type="button" class="secondary">
+        Change setup
+      </button>
+      <button id="debugBtn" type="button" class="secondary">Debug</button>
+    </div>
+
+    <div id="debugPanel">
+      <div id="debugInfo"></div>
+      <div id="debugActions">
+        <button id="swapViewBtn" type="button" class="secondary">
+          Swap view
+        </button>
+        <button id="scrollUpBtn" type="button" class="secondary">▲</button>
+        <button id="scrollDownBtn" type="button" class="secondary">▼</button>
+      </div>
+    </div>
+
     <script src="recent-sets-config.js"></script>
     <script>
       const API_URL = "https://api.start.gg/gql/alpha";
       let pollingInterval;
-      let entrantPlacements = {};
+      let activeSlug = null;
+      let setsOffset = 0; // debug: how far past the most recent set to scroll
+      let currentView = "recent"; // "recent" | "history"
+      const debugState = { fetchCount: 0, lastFetch: "—", lastResult: "—" };
 
       const params = new URLSearchParams(window.location.search);
+
+      // ?reset=1 clears saved config and shows the form — the escape hatch
+      // for a bad saved token, since OBS storage is hard to clear by hand.
+      if (params.has("reset")) {
+        localStorage.removeItem("startggToken");
+        localStorage.removeItem("startggEventUrl");
+      }
+
       let authToken =
         params.get("token") ||
         params.get("t") ||
@@ -304,12 +426,13 @@
       if (authToken) document.getElementById("tokenInput").value = authToken;
 
       let eventUrl =
-        params.get("url") || params.get("u") || window.STARTGG_URL || "";
+        params.get("url") ||
+        params.get("u") ||
+        window.STARTGG_URL ||
+        localStorage.getItem("startggEventUrl") ||
+        "";
 
-      if (authToken && eventUrl) {
-        document.getElementById("configPanel").classList.add("hidden");
-        startOverlay();
-      }
+      if (eventUrl) document.getElementById("urlInput").value = eventUrl;
 
       document
         .getElementById("configPanel")
@@ -320,11 +443,16 @@
           query EventSetsAndEntrants($slug: String!) {
             event(slug: $slug) {
               numEntrants
-              sets(perPage: 5, page: 1, sortType: RECENT) {
+              phases { phaseOrder }
+              sets(perPage: ${Math.min(setsOffset + 5, 50)}, page: 1, sortType: RECENT) {
                 nodes {
                   id
                   round
                   fullRoundText
+                  phaseGroup {
+                    bracketType
+                    phase { numSeeds phaseOrder }
+                  }
                   slots {
                     entrant { id name }
                     seed { seedNum }
@@ -332,15 +460,11 @@
                   }
                 }
               }
-              entrants(query: { perPage: 10 }) {
-                nodes {
-                  id
-                  standing { placement }
-                }
-              }
             }
           }
         `;
+        debugState.fetchCount++;
+        debugState.lastFetch = new Date().toLocaleTimeString();
         try {
           const res = await fetch(API_URL, {
             method: "POST",
@@ -352,35 +476,43 @@
           });
           const json = await res.json();
 
-          if (!json.data || json.success === false) {
-            console.error("Error fetching data: ", json.message || json);
-            document.getElementById("startggErrorMessage").innerHTML =
-              `Start.gg error message: ${json.message}`;
-            return { error: true };
+          if (!json.data || json.errors || json.success === false) {
+            const message =
+              json.message || json.errors?.[0]?.message || "Unexpected response";
+            console.error("Error fetching data: ", message, json);
+            debugState.lastResult = `error: ${message}`;
+            return { error: true, message: `Start.gg error: ${message}` };
           }
 
-          document.getElementById("startggErrorMessage").innerHTML = "";
+          // A parseable but nonexistent event comes back as data.event: null
+          // with no errors — don't let that pass verification.
+          if (!json.data.event) {
+            debugState.lastResult = "error: event not found";
+            return {
+              error: true,
+              message: "Start.gg error: event not found — double-check the URL.",
+            };
+          }
 
+          const sets = json.data.event.sets?.nodes || [];
+          debugState.lastResult = `ok (${sets.length} sets)`;
           return {
-            sets: json.data.event?.sets?.nodes || [],
-            entrants: json.data.event?.entrants?.nodes || [],
-            numEntrants: json.data.event?.numEntrants || 0,
+            sets,
+            numEntrants: json.data.event.numEntrants || 0,
+            maxPhaseOrder: Math.max(
+              0,
+              ...(json.data.event.phases || []).map((p) => p?.phaseOrder || 0)
+            ),
           };
         } catch (err) {
           console.error("Network error fetching data: ", err);
-          document.getElementById("startggErrorMessage").innerHTML =
-            "Network error contacting Start.gg. Retrying…";
-          return { error: true };
+          debugState.lastResult = `network error: ${err.message}`;
+          return {
+            error: true,
+            network: true,
+            message: "Network error contacting Start.gg.",
+          };
         }
-      }
-
-      function buildEntrantPlacementMap(entrants) {
-        entrantPlacements = {};
-        entrants.forEach((entrant) => {
-          if (entrant?.id && entrant.standing?.placement) {
-            entrantPlacements[entrant.id] = entrant.standing.placement;
-          }
-        });
       }
 
       function escapeHtml(str) {
@@ -405,47 +537,58 @@
         return parts[parts.length - 1].trim();
       }
 
+      function pow2Ceil(n) {
+        return n >= 2 ? 1 << Math.ceil(Math.log2(n)) : 0;
+      }
+
+      // "Top N" values for losers rounds counting back from Losers Final:
+      // LF=3, LSF=4, then 6, 8, 12, 16, 24, 32, 48, 64, 96, 128 …
+      const LOSERS_TOP = [
+        3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512,
+      ];
+
       function formatRound(set) {
         if (!set) return "VS";
+        if (set.phaseGroup?.bracketType === "ROUND_ROBIN") return "RR";
+
         const txt = (set.fullRoundText || "").toLowerCase();
-        const N = tournamentInfo.bracketSize || 2;
-
-        // Finals
         if (txt.includes("grand final")) return "GF";
-        if (txt.includes("losers final")) return "LF";
-        if (txt.includes("winners final")) return "WF";
 
-        // Semis / Quarters
-        if (txt.includes("winners semi")) return "WSF";
-        if (txt.includes("losers semi")) return "LSF";
-        if (txt.includes("winners quarter")) return "WQF";
-        if (txt.includes("losers quarter")) return "LQF";
+        // Named rounds are only event-true in the FINAL phase — a qualifier
+        // phase reuses names like "Winners Quarter-Final" for its own last
+        // rounds, where the event-true label is a Top-N number.
+        const phase = set.phaseGroup?.phase;
+        const isFinalPhase =
+          phase?.phaseOrder == null ||
+          phase.phaseOrder === tournamentInfo.maxPhaseOrder;
 
-        // If we have a numeric round from set.round, use that
+        if (isFinalPhase) {
+          if (txt.includes("losers final")) return "LF";
+          if (txt.includes("winners final")) return "WF";
+          if (txt.includes("winners semi")) return "WSF";
+          if (txt.includes("losers semi")) return "LSF";
+          if (txt.includes("winners quarter")) return "WQF";
+          if (txt.includes("losers quarter")) return "LQF";
+        }
+
+        // Everything else: treat the event as one double-elim bracket and
+        // label rounds by players remaining, supermajor.gg-style. start.gg
+        // numbers losers rounds so |round| = 2*log2(bracketSize) at Losers
+        // Final, which makes one formula correct for qualifier and final
+        // phases alike.
+        const P = pow2Ceil(phase?.numSeeds) || tournamentInfo.bracketSize;
         const r = set.round;
-        if (typeof r === "number") {
+        if (typeof r === "number" && P >= 4) {
           if (r > 0) {
-            // Winners: round 1 = Top N, round 2 = Top N/2, etc.
-            const topN = N / Math.pow(2, r - 1);
-            return `W.T${topN}`;
-          }
-          if (r < 0) {
-            // Losers: rounds come in pairs
-            const k = Math.abs(r);
-            const index = Math.ceil(k / 2);
-            const topN = N / Math.pow(2, index - 1);
-            return `L.T${topN}`;
+            const top = P / Math.pow(2, r - 1);
+            if (top >= 2) return `W.T${top}`;
+          } else if (r < 0) {
+            const dist = 2 * Math.log2(P) - Math.abs(r);
+            if (LOSERS_TOP[dist]) return `L.T${LOSERS_TOP[dist]}`;
           }
         }
 
         return "VS";
-      }
-
-      function getOrdinal(num) {
-        if (!num) return "";
-        const s = ["th", "st", "nd", "rd"];
-        const v = num % 100;
-        return num + (s[(v - 20) % 10] || s[v] || s[0]);
       }
 
       // A short string capturing everything we render for a set, so a poll
@@ -477,35 +620,6 @@
           p1Score = "W";
         }
 
-        // Figure out the loser so we can show their final placement.
-        let loserId = null;
-        if (!isNaN(parseInt(p1Score)) && !isNaN(parseInt(p2Score))) {
-          if (parseInt(p1Score) > parseInt(p2Score)) {
-            loserId = p2?.entrant?.id;
-          } else if (parseInt(p2Score) > parseInt(p1Score)) {
-            loserId = p1?.entrant?.id;
-          }
-        }
-
-        let p1PlacementText = "";
-        let p2PlacementText = "";
-        if (
-          loserId &&
-          (set.round < 0 ||
-            (set.fullRoundText &&
-              set.fullRoundText.toLowerCase().includes("grand final")))
-        ) {
-          const placement = entrantPlacements[loserId];
-          if (placement) {
-            const text = getOrdinal(placement);
-            if (loserId === p1?.entrant?.id) {
-              p1PlacementText = text;
-            } else if (loserId === p2?.entrant?.id) {
-              p2PlacementText = text;
-            }
-          }
-        }
-
         const p1ScoreClass = `score${
           p1Score === "W" || p1Score > p2Score ? " winner" : ""
         }`;
@@ -513,26 +627,20 @@
           p2Score === "W" || p2Score > p1Score ? " winner" : ""
         }`;
 
+        // Unreported scores (in-progress or unstarted sets) parse to NaN —
+        // show a dash instead.
+        const displayScore = (s) => (Number.isNaN(s) ? "–" : s);
+
         return `
-            <div class="${p1ScoreClass}">${p1Score}</div>
+            <div class="${p1ScoreClass}">${displayScore(p1Score)}</div>
             <div class="player-name left">
               <span>${escapeHtml(extractPlayerTag(p1?.entrant?.name))}</span>
-              ${
-                p1PlacementText
-                  ? `<div class="placement">(${p1PlacementText})</div>`
-                  : ""
-              }
             </div>
             <div class="vs mono">${formatRound(set)}</div>
             <div class="player-name right">
-              ${
-                p2PlacementText
-                  ? `<div class="placement">(${p2PlacementText})</div>`
-                  : ""
-              }
               <span>${escapeHtml(extractPlayerTag(p2?.entrant?.name))}</span>
             </div>
-            <div class="${p2ScoreClass}">${p2Score}</div>
+            <div class="${p2ScoreClass}">${displayScore(p2Score)}</div>
             <div class="set-background"></div>
           `;
       }
@@ -540,16 +648,13 @@
       let hasRenderedOnce = false;
       let lastSignature = "";
       function renderSets(sets) {
-        const top = sets.slice(0, 4);
+        const top = sets.slice(setsOffset, setsOffset + 4);
         const signature = top.map(setSignature).join("|");
         if (signature === lastSignature) return; // nothing changed since last poll
         lastSignature = signature;
 
-        // Reveal the overlay once the first batch of results arrives.
-        if (!hasRenderedOnce && top.length > 0) {
-          document.querySelector(".header").style.display = "block";
-          document.getElementById("setsContainer").style.display = "grid";
-          document.querySelector(".footer").style.display = "block";
+        if (top.length > 0) {
+          document.getElementById("waitingMessage").style.display = "none";
         }
 
         const container = document.getElementById("setsContainer");
@@ -602,74 +707,293 @@
         const match = url.match(
           /start\.gg\/tournament\/([^\/]+)\/event\/([^\/]+)/
         );
-        if (match) {
-          return `tournament/${match[1]}/event/${match[2]}`;
-        } else {
-          alert(
-            "Could not extract event slug from URL. Make sure it's a direct event link like 'https://www.start.gg/tournament/.../event/...'"
-          );
-          return null;
-        }
+        return match ? `tournament/${match[1]}/event/${match[2]}` : null;
       }
 
       let tournamentInfo = { entrantsCount: 0 };
 
-      function buildTournamentInfo(numEntrants) {
-        const powerOfTwo = 1 << Math.ceil(Math.log2(numEntrants));
+      function buildTournamentInfo(numEntrants, maxPhaseOrder) {
         tournamentInfo = {
           entrantsCount: numEntrants,
-          bracketSize: powerOfTwo,
+          bracketSize: pow2Ceil(numEntrants),
+          maxPhaseOrder,
         };
       }
 
-      function startOverlay(e) {
+      function showConfigError(msg) {
+        const el = document.getElementById("configError");
+        el.textContent = msg;
+        el.style.display = "block";
+      }
+
+      function clearConfigError() {
+        const el = document.getElementById("configError");
+        el.textContent = "";
+        el.style.display = "none";
+      }
+
+      function setOverlayVisible(visible) {
+        const display = visible ? "block" : "none";
+        document.querySelector(".header").style.display = display;
+        document.querySelector(".footer").style.display = display;
+        if (visible) {
+          setView(currentView); // shows the right container for the view
+        } else {
+          document.getElementById("setsContainer").style.display = "none";
+          document.getElementById("matchHistoryContainer").style.display =
+            "none";
+        }
+      }
+
+      function applyFetchResult(result) {
+        buildTournamentInfo(result.numEntrants, result.maxPhaseOrder);
+        renderSets(result.sets);
+        renderDebugPanel();
+      }
+
+      // Immediate refetch outside the polling cadence (debug scroll).
+      async function refreshNow() {
+        if (!activeSlug) return;
+        const result = await fetchData(activeSlug);
+        if (!result.error) applyFetchResult(result);
+        renderDebugPanel();
+      }
+
+      // Debug view swap: "recent" is the normal on-stream view; "history"
+      // is a stub to develop the match-history view against. The goal is to
+      // eventually auto-phase between the two every few seconds.
+      function setView(view) {
+        currentView = view;
+        const recent = view === "recent";
+        document.querySelector(".header").textContent = recent
+          ? "Recent Results"
+          : "Match History";
+        document.getElementById("setsContainer").style.display = recent
+          ? "grid"
+          : "none";
+        document.getElementById("matchHistoryContainer").style.display = recent
+          ? "none"
+          : "block";
+        document.getElementById("waitingMessage").style.display =
+          recent && !document.querySelector("#setsContainer .set")
+            ? "block"
+            : "none";
+        renderDebugPanel();
+      }
+
+      // Debug mode: toggled by the (OBS-hidden) button, or forced on with
+      // ?debug=1 — the explicit param works even inside OBS so the overlay
+      // can be diagnosed from the Interact window.
+      let debugOpen = params.has("debug");
+
+      function renderDebugPanel() {
+        if (!debugOpen) return;
+        document.getElementById("debugInfo").textContent = [
+          `obs detected: ${!!window.obsstudio}`,
+          `event: ${activeSlug || "—"}`,
+          `view: ${currentView}`,
+          `scroll offset: ${setsOffset}`,
+          `polling: ${pollingInterval ? "every 5s" : "off"}`,
+          `fetches: ${debugState.fetchCount}`,
+          `last fetch: ${debugState.lastFetch}`,
+          `last result: ${debugState.lastResult}`,
+          `entrants: ${tournamentInfo.entrantsCount} (bracket size ${
+            tournamentInfo.bracketSize ?? "?"
+          })`,
+          `sets rendered: ${
+            document.querySelectorAll("#setsContainer .set").length
+          }`,
+          `saved config: ${
+            localStorage.getItem("startggToken") ? "token ✓" : "token ✗"
+          }, ${localStorage.getItem("startggEventUrl") ? "url ✓" : "url ✗"}`,
+        ].join("\n");
+      }
+
+      document.getElementById("swapViewBtn").addEventListener("click", () => {
+        setView(currentView === "recent" ? "history" : "recent");
+      });
+
+      // Scroll a full screen (4 sets) at a time.
+      document
+        .getElementById("scrollDownBtn")
+        .addEventListener("click", () => {
+          setsOffset = Math.min(setsOffset + 4, 40);
+          renderDebugPanel();
+          refreshNow();
+        });
+
+      document.getElementById("scrollUpBtn").addEventListener("click", () => {
+        setsOffset = Math.max(setsOffset - 4, 0);
+        renderDebugPanel();
+        refreshNow();
+      });
+
+      function setDebugOpen(open) {
+        debugOpen = open;
+        document.getElementById("debugPanel").style.display = open
+          ? "block"
+          : "none";
+        renderDebugPanel();
+      }
+
+      document
+        .getElementById("debugBtn")
+        .addEventListener("click", () => setDebugOpen(!debugOpen));
+
+      if (debugOpen) setDebugOpen(true);
+
+      // The copy-link / change-setup helpers are for the setup browser only.
+      // OBS injects window.obsstudio into browser sources, so inside OBS
+      // these stay hidden and never appear on stream.
+      function showStreamControls() {
+        if (window.obsstudio) return;
+        document.getElementById("streamControls").style.display = "flex";
+      }
+
+      document
+        .getElementById("copyObsLinkBtn")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("copyObsLinkBtn");
+          const link = `${location.origin}${
+            location.pathname
+          }?t=${encodeURIComponent(authToken)}&u=${encodeURIComponent(
+            eventUrl
+          )}`;
+          try {
+            await navigator.clipboard.writeText(link);
+          } catch (err) {
+            prompt("Copy this link into an OBS browser source:", link);
+            return;
+          }
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy OBS link"), 2000);
+        });
+
+      document
+        .getElementById("changeSetupBtn")
+        .addEventListener("click", () => {
+          if (pollingInterval) clearInterval(pollingInterval);
+          pollingInterval = null;
+          setOverlayVisible(false);
+          document.getElementById("startggErrorMessage").textContent = "";
+          document.getElementById("waitingMessage").style.display = "none";
+          document.getElementById("streamControls").style.display = "none";
+          document.getElementById("tokenInput").value = authToken;
+          document.getElementById("urlInput").value = eventUrl;
+          document.getElementById("configPanel").classList.remove("hidden");
+        });
+
+      let startingUp = false;
+      async function startOverlay(e) {
         if (e) e.preventDefault();
+        if (startingUp) return;
+
+        clearConfigError();
 
         // Always prefer what's currently typed in the form, so a corrected
         // token or URL isn't ignored in favor of a stale cached value.
         const typedToken = document.getElementById("tokenInput").value.trim();
         if (typedToken) authToken = typedToken;
         if (!authToken) {
-          alert("Please enter your Start.gg API token.");
+          showConfigError("Please enter your Start.gg API token.");
           return;
         }
-        localStorage.setItem("startggToken", authToken);
 
         const typedUrl = document.getElementById("urlInput").value.trim();
         if (typedUrl) eventUrl = typedUrl;
         if (!eventUrl) {
-          alert("Please enter a Start.gg event URL.");
+          showConfigError("Please enter a Start.gg event URL.");
           return;
         }
 
         const slug = extractSlugFromUrl(eventUrl);
         if (!slug) {
           eventUrl = "";
+          showConfigError(
+            "Couldn't read that URL — paste a direct event link like " +
+              "https://www.start.gg/tournament/.../event/..."
+          );
+          return;
+        }
+        activeSlug = slug;
+
+        const startButton = document.querySelector(
+          "#configPanel button[type='submit']"
+        );
+        startingUp = true;
+        startButton.disabled = true;
+        startButton.textContent = "Connecting…";
+
+        const result = await fetchData(slug);
+
+        startingUp = false;
+        startButton.disabled = false;
+        startButton.textContent = "Start";
+
+        if (result.error) {
+          // A transient network failure during an unattended auto-start
+          // (e.g. OBS launching before the network is up) should self-heal,
+          // not surface a form nobody is there to click.
+          const interactive = !!e;
+          if (result.network && !interactive) {
+            document.getElementById("startggErrorMessage").textContent =
+              result.message + " Retrying…";
+            setTimeout(startOverlay, 5000);
+            return;
+          }
+          // Bring the form back so a bad token or URL can be corrected —
+          // especially important inside OBS, where storage is hard to clear.
+          document.getElementById("startggErrorMessage").textContent = "";
+          showConfigError(result.message);
+          document.getElementById("configPanel").classList.remove("hidden");
           return;
         }
 
+        // Config verified against start.gg — only now persist it, so a bad
+        // token or URL is never saved.
+        localStorage.setItem("startggToken", authToken);
+        localStorage.setItem("startggEventUrl", eventUrl);
+
         document.getElementById("configPanel").classList.add("hidden");
+        document.getElementById("startggErrorMessage").textContent = "";
+
+        setOverlayVisible(true);
+        applyFetchResult(result);
+        document.getElementById("waitingMessage").style.display =
+          currentView === "recent" &&
+          !document.querySelector("#setsContainer .set")
+            ? "block"
+            : "none";
+
+        showStreamControls();
 
         if (window.ENABLE_POLLING !== false) {
           if (pollingInterval) clearInterval(pollingInterval);
           pollingInterval = setInterval(async () => {
             const result = await fetchData(slug);
-            if (result.error) return;
-            const { sets, entrants, numEntrants } = result;
-            buildEntrantPlacementMap(entrants);
-            buildTournamentInfo(numEntrants);
-            renderSets(sets);
+            if (result.error) {
+              // Existing results stay up. Only surface poll errors while
+              // nothing is rendered yet, so hiccups never print over a
+              // live stream.
+              if (!document.querySelector("#setsContainer .set")) {
+                document.getElementById("startggErrorMessage").textContent =
+                  result.message + " Retrying…";
+              }
+              renderDebugPanel();
+              return;
+            }
+            document.getElementById("startggErrorMessage").textContent = "";
+            applyFetchResult(result);
           }, 5000);
         }
+      }
 
-        (async () => {
-          const result = await fetchData(slug);
-          if (result.error) return;
-          const { sets, entrants, numEntrants } = result;
-          buildEntrantPlacementMap(entrants);
-          buildTournamentInfo(numEntrants);
-          renderSets(sets);
-        })();
+      // Auto-start when fully configured (query params, config file, or a
+      // previously verified setup saved in localStorage). Runs last so all
+      // state above is initialized before startOverlay executes.
+      if (authToken && eventUrl && !params.has("reset")) {
+        document.getElementById("configPanel").classList.add("hidden");
+        startOverlay();
       }
     </script>
   </body>
