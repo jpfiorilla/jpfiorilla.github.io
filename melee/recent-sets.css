@@ -111,8 +111,11 @@ body {
   position: absolute;
   left: 20px;
   right: 20px;
-  top: 12px;
-  bottom: 12px;
+  /* match the score circles' outer height (circle + 3px borders) exactly,
+     independent of how tall the grid stretches the row */
+  top: 50%;
+  transform: translateY(-50%);
+  height: calc(clamp(40px, 6vw, 60px) + 6px);
   z-index: -1;
   background: #14253d;
 }
