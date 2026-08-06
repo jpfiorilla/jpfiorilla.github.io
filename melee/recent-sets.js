@@ -49,8 +49,15 @@ async function fetchData(slug) {
   const query = `
     query EventSetsAndEntrants($slug: String!) {
       event(slug: $slug) {
+        id
         numEntrants
         phases { phaseOrder }
+        tournament {
+          streamQueue {
+            stream { streamName }
+            sets { id event { id } }
+          }
+        }
         sets(perPage: ${Math.min(setsOffset + 5, 50)}, page: 1, sortType: RECENT) {
           nodes {
             id
@@ -103,8 +110,26 @@ async function fetchData(slug) {
 
     const sets = json.data.event.sets?.nodes || [];
     debugState.lastResult = `ok (${sets.length} sets)`;
+
+    // The set currently assigned to the stream (tournament stream queue),
+    // restricted to this event. ?stream=name picks a queue when the
+    // tournament runs several; otherwise the first queue is used.
+    const eventId = json.data.event.id;
+    const queues = json.data.event.tournament?.streamQueue || [];
+    const wantedStream = (params.get("stream") || "").toLowerCase();
+    const queue =
+      (wantedStream &&
+        queues.find(
+          (q) => (q?.stream?.streamName || "").toLowerCase() === wantedStream
+        )) ||
+      queues[0];
+    const streamSet = (queue?.sets || []).find(
+      (s) => s?.event?.id === eventId
+    );
+
     return {
       sets,
+      streamSetId: streamSet ? String(streamSet.id) : null,
       numEntrants: json.data.event.numEntrants || 0,
       maxPhaseOrder: Math.max(
         0,
@@ -352,19 +377,31 @@ function setOverlayVisible(visible) {
   }
 }
 
-let lastFeaturedSetId = null;
+// Which set Match History is about: the set assigned to the stream via
+// the tournament's stream queue, or — for events without one — the most
+// recently completed set.
+let h2hTargetSetId = null;
+let h2hTargetSource = "—";
+let lastTargetSetId = null;
+
 function applyFetchResult(result) {
   latestSets = result.sets;
   buildTournamentInfo(result.numEntrants, result.maxPhaseOrder);
   renderSets(result.sets);
 
-  const featuredId = latestSets[0] ? String(latestSets[0].id) : null;
-  if (featuredId !== lastFeaturedSetId) {
+  h2hTargetSetId =
+    result.streamSetId ||
+    (latestSets[0] ? String(latestSets[0].id) : null);
+  h2hTargetSource = result.streamSetId
+    ? "stream queue"
+    : "latest completed set";
+
+  if (h2hTargetSetId !== lastTargetSetId) {
     // A new set just went on stream — its match history isn't loaded
     // yet, so never linger on the history view. The first fetch after
     // startup isn't a set change (it must not override ?view=history).
-    const isFirstFetch = lastFeaturedSetId === null;
-    lastFeaturedSetId = featuredId;
+    const isFirstFetch = lastTargetSetId === null;
+    lastTargetSetId = h2hTargetSetId;
     if (!isFirstFetch && currentView === "history") setViewAnimated("recent");
   }
   prefetchMatchHistory();
@@ -716,10 +753,10 @@ async function fetchHeadToHead(p1, p2, limit = 4, excludeSetId) {
   return { sets, record };
 }
 
-// Match history state. Loaded in the BACKGROUND whenever the featured
-// set changes — the history view only ever renders already-loaded
-// data, so a "loading…" state can never appear on stream. The future
-// auto-phase timer must gate on matchHistoryReady().
+// Match history state. Loaded in the BACKGROUND whenever the target set
+// (see h2hTargetSetId) changes — the history view only ever renders
+// already-loaded data, so a "loading…" state can never appear on stream.
+// The auto-phase timer gates on matchHistoryReady().
 let h2h = {
   setId: null,
   loading: false,
@@ -737,15 +774,14 @@ function matchHistoryReady() {
   return (
     h2h.ready &&
     h2h.hasData &&
-    latestSets[0] &&
-    h2h.setId === String(latestSets[0].id)
+    h2hTargetSetId !== null &&
+    h2h.setId === h2hTargetSetId
   );
 }
 
 function prefetchMatchHistory() {
-  const featured = latestSets[0];
-  if (!featured) return;
-  const id = String(featured.id);
+  if (!h2hTargetSetId) return;
+  const id = h2hTargetSetId;
   // Already loaded or in flight for this set; a failed attempt
   // (neither flag set) retries on the next poll.
   if (h2h.setId === id && (h2h.ready || h2h.loading)) return;
@@ -764,7 +800,7 @@ function prefetchMatchHistory() {
 
   (async () => {
     try {
-      const players = await fetchSetPlayers(featured.id);
+      const players = await fetchSetPlayers(id);
       const [s1, s2] = players;
       let sets = [];
       let record = { left: 0, right: 0 };
@@ -776,7 +812,7 @@ function prefetchMatchHistory() {
         message =
           "Can't look up history — couldn't identify both players on start.gg.";
       } else {
-        const h = await fetchHeadToHead(s1, s2, 4, featured.id);
+        const h = await fetchHeadToHead(s1, s2, 4, id);
         sets = h.sets;
         // Keep the same player on the same side in every row, matching
         // the main view's convention: better seed (lower number) left.
@@ -798,7 +834,7 @@ function prefetchMatchHistory() {
           message = `No prior sets found between ${s1.name} and ${s2.name}.`;
         }
       }
-      if (h2h.setId !== id) return; // featured set moved on — discard
+      if (h2h.setId !== id) return; // target set moved on — discard
       h2h = {
         setId: id,
         loading: false,
@@ -1002,8 +1038,8 @@ function autoPhaseTick() {
     if (matchHistoryReady()) {
       autoPhase.status = "swapping";
       setViewAnimated("history");
-    } else if (!latestSets[0]) {
-      autoPhase.status = "holding — no completed sets yet";
+    } else if (!h2hTargetSetId) {
+      autoPhase.status = "holding — no target set yet";
     } else if (h2h.loading) {
       autoPhase.status = "holding — fetching match history";
     } else if (h2h.ready && !h2h.hasData) {
@@ -1072,6 +1108,7 @@ function renderDebugPanel() {
           : "ready (no history)"
         : "—"
     }`,
+    `h2h target: ${h2hTargetSetId ?? "—"} (${h2hTargetSource})`,
     `fetches: ${debugState.fetchCount}`,
     `last fetch: ${debugState.lastFetch}`,
     `last result: ${debugState.lastResult}`,
