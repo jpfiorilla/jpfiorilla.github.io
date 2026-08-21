@@ -47,15 +47,26 @@ document
 
 async function fetchData(slug) {
   const query = `
-    query EventSetsAndEntrants($slug: String!) {
+    query EventSetsAndEntrants($slug: String!, $tourneySlug: String!) {
+      tournament(slug: $tourneySlug) {
+        streamQueue {
+          stream { streamName }
+          sets { id event { id } }
+        }
+      }
       event(slug: $slug) {
         id
         numEntrants
         phases { phaseOrder }
-        tournament {
-          streamQueue {
+        onStream: sets(
+          page: 1
+          perPage: 24
+          filters: { state: [1, 2, 6] }
+        ) {
+          nodes {
+            id
+            state
             stream { streamName }
-            sets { id event { id } }
           }
         }
         sets(perPage: ${Math.min(setsOffset + 5, 50)}, page: 1, sortType: RECENT) {
@@ -86,7 +97,11 @@ async function fetchData(slug) {
         "Content-Type": "application/json",
         Authorization: "Bearer " + authToken,
       },
-      body: JSON.stringify({ query, variables: { slug } }),
+      body: JSON.stringify({
+        query,
+        // "tournament/<t>/event/<e>" → tournament slug "<t>"
+        variables: { slug, tourneySlug: slug.split("/")[1] },
+      }),
     });
     const json = await res.json();
 
@@ -111,21 +126,33 @@ async function fetchData(slug) {
     const sets = json.data.event.sets?.nodes || [];
     debugState.lastResult = `ok (${sets.length} sets)`;
 
-    // The set currently assigned to the stream (tournament stream queue),
-    // restricted to this event. ?stream=name picks a queue when the
-    // tournament runs several; otherwise the first queue is used.
-    const eventId = json.data.event.id;
-    const queues = json.data.event.tournament?.streamQueue || [];
+    // The set currently on stream. NYC Melee's TO assigns sets to the
+    // stream STATION, which populates set.stream on active sets (verified
+    // against stock-exchange-62: every streamed set had stream.streamName
+    // while tournament.streamQueue stayed null). Primary signal: an active
+    // (state 1 created / 2 started / 6 called — never 3 completed) set
+    // with a stream. Secondary: the documented stream queue, for TOs who
+    // use it. ?stream=name narrows both on multi-stream tournaments.
     const wantedStream = (params.get("stream") || "").toLowerCase();
-    const queue =
-      (wantedStream &&
-        queues.find(
-          (q) => (q?.stream?.streamName || "").toLowerCase() === wantedStream
-        )) ||
-      queues[0];
-    const streamSet = (queue?.sets || []).find(
-      (s) => s?.event?.id === eventId
+    const matchesWanted = (name) =>
+      !wantedStream || (name || "").toLowerCase() === wantedStream;
+
+    const active = (json.data.event.onStream?.nodes || []).filter(
+      (s) => s?.stream && matchesWanted(s.stream.streamName)
     );
+    // in progress beats called beats created
+    const stateRank = { 2: 0, 6: 1, 1: 2 };
+    active.sort((a, b) => (stateRank[a.state] ?? 3) - (stateRank[b.state] ?? 3));
+    let streamSet = active[0] || null;
+
+    if (!streamSet) {
+      const eventId = json.data.event.id;
+      const queues = json.data.tournament?.streamQueue || [];
+      const queue =
+        queues.find((q) => matchesWanted(q?.stream?.streamName)) || queues[0];
+      streamSet =
+        (queue?.sets || []).find((s) => s?.event?.id === eventId) || null;
+    }
 
     return {
       sets,
@@ -393,7 +420,7 @@ function applyFetchResult(result) {
     result.streamSetId ||
     (latestSets[0] ? String(latestSets[0].id) : null);
   h2hTargetSource = result.streamSetId
-    ? "stream queue"
+    ? "on stream"
     : "latest completed set";
 
   if (h2hTargetSetId !== lastTargetSetId) {
