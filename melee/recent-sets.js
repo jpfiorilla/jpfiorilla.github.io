@@ -140,15 +140,14 @@ async function fetchData(slug) {
       !wantedStream || (name || "").toLowerCase() === wantedStream;
     const eventId = json.data.event.id;
 
-    let streamSet = null;
-    const queues = json.data.tournament?.streamQueue || [];
-    const queue =
-      queues.find((q) => matchesWanted(q?.stream?.streamName)) ||
-      (!wantedStream ? queues[0] : null);
-    const queueHead = queue?.sets?.[0];
-    if (queueHead && queueHead.event?.id === eventId) streamSet = queueHead;
+    const streamSet = (() => {
+      const queues = json.data.tournament?.streamQueue || [];
+      const queue =
+        queues.find((q) => matchesWanted(q?.stream?.streamName)) ||
+        (!wantedStream ? queues[0] : null);
+      const queueHead = queue?.sets?.[0];
+      if (queueHead && queueHead.event?.id === eventId) return queueHead;
 
-    if (!streamSet) {
       const active = (json.data.event.onStream?.nodes || []).filter(
         (s) => s?.stream && matchesWanted(s.stream.streamName)
       );
@@ -157,8 +156,8 @@ async function fetchData(slug) {
       active.sort(
         (a, b) => (stateRank[a.state] ?? 3) - (stateRank[b.state] ?? 3)
       );
-      streamSet = active[0] || null;
-    }
+      return active[0] || null;
+    })();
 
     return {
       sets,
