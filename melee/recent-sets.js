@@ -126,32 +126,38 @@ async function fetchData(slug) {
     const sets = json.data.event.sets?.nodes || [];
     debugState.lastResult = `ok (${sets.length} sets)`;
 
-    // The set currently on stream. NYC Melee's TO assigns sets to the
-    // stream STATION, which populates set.stream on active sets (verified
-    // against stock-exchange-62: every streamed set had stream.streamName
-    // while tournament.streamQueue stayed null). Primary signal: an active
-    // (state 1 created / 2 started / 6 called — never 3 completed) set
-    // with a stream. Secondary: the documented stream queue, for TOs who
-    // use it. ?stream=name narrows both on multi-stream tournaments.
+    // The set currently on stream. PRIMARY: the stream queue's 0th set —
+    // queue order is [current, next, next…], so later entries are future
+    // sets, never alternatives; only sets[0] may be used (and only if it
+    // belongs to this event). The queue is live during broadcasts and
+    // cleared afterwards. FALLBACK: an active (state 1 created / 2 started
+    // / 6 called — never 3 completed) set assigned to the stream station,
+    // preferring in-progress; the TO pre-assigning the NEXT set to the
+    // station is why the station alone can be ambiguous. ?stream=name
+    // narrows both signals on multi-stream tournaments.
     const wantedStream = (params.get("stream") || "").toLowerCase();
     const matchesWanted = (name) =>
       !wantedStream || (name || "").toLowerCase() === wantedStream;
+    const eventId = json.data.event.id;
 
-    const active = (json.data.event.onStream?.nodes || []).filter(
-      (s) => s?.stream && matchesWanted(s.stream.streamName)
-    );
-    // in progress beats called beats created
-    const stateRank = { 2: 0, 6: 1, 1: 2 };
-    active.sort((a, b) => (stateRank[a.state] ?? 3) - (stateRank[b.state] ?? 3));
-    let streamSet = active[0] || null;
+    let streamSet = null;
+    const queues = json.data.tournament?.streamQueue || [];
+    const queue =
+      queues.find((q) => matchesWanted(q?.stream?.streamName)) ||
+      (!wantedStream ? queues[0] : null);
+    const queueHead = queue?.sets?.[0];
+    if (queueHead && queueHead.event?.id === eventId) streamSet = queueHead;
 
     if (!streamSet) {
-      const eventId = json.data.event.id;
-      const queues = json.data.tournament?.streamQueue || [];
-      const queue =
-        queues.find((q) => matchesWanted(q?.stream?.streamName)) || queues[0];
-      streamSet =
-        (queue?.sets || []).find((s) => s?.event?.id === eventId) || null;
+      const active = (json.data.event.onStream?.nodes || []).filter(
+        (s) => s?.stream && matchesWanted(s.stream.streamName)
+      );
+      // in progress beats called beats created
+      const stateRank = { 2: 0, 6: 1, 1: 2 };
+      active.sort(
+        (a, b) => (stateRank[a.state] ?? 3) - (stateRank[b.state] ?? 3)
+      );
+      streamSet = active[0] || null;
     }
 
     return {
