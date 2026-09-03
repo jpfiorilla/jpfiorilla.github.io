@@ -498,7 +498,12 @@ async function fetchSetPlayers(setId) {
 // reliable approach is to walk the ENTIRE set history of one player
 // (slim fields, batched pages) and keep the sets where the other
 // player fills the opposite slot. Validated against supermajor.gg.
-const H2H_PAGE_SIZE = 85; // ~940 objects/request; the cap is 1000
+// start.gg's 1000-object cap counts RETURNED objects, so cost varies by
+// page content: doubles-heavy pages carry extra participants and burst the
+// cap at larger page sizes (85/page died at 1056 on Ryobeat's history).
+// 60/page stays under the cap even for all-doubles pages, and a stubborn
+// page is split in half on a complexity error.
+const H2H_PAGE_SIZE = 60;
 const H2H_MAX_PAGES = 60; // 5100 sets — beyond any realistic rivalry
 const H2H_BATCH = 4; // concurrent page requests per round
 
@@ -554,10 +559,10 @@ function savePlayerHistory(playerId, history) {
   }
 }
 
-const H2H_WALK_QUERY = `
+const walkQuery = (perPage) => `
   query PairWalk($pid: ID!, $page: Int!) {
     player(id: $pid) {
-      sets(page: $page, perPage: ${H2H_PAGE_SIZE}) {
+      sets(page: $page, perPage: ${perPage}) {
         nodes {
           id
           winnerId
@@ -570,11 +575,28 @@ const H2H_WALK_QUERY = `
     }
   }`;
 
+// One walk page of H2H_PAGE_SIZE sets. On a complexity error the same
+// window is refetched as two half-size pages (page N at size S covers
+// pages 2N-1 and 2N at size S/2).
+async function fetchWalkPage(playerId, page) {
+  try {
+    const data = await gql(walkQuery(H2H_PAGE_SIZE), { pid: playerId, page });
+    return data.player?.sets?.nodes || [];
+  } catch (err) {
+    if (!/complexity/i.test(err.message)) throw err;
+    const half = H2H_PAGE_SIZE / 2;
+    const [a, b] = await Promise.all([
+      gql(walkQuery(half), { pid: playerId, page: page * 2 - 1 }),
+      gql(walkQuery(half), { pid: playerId, page: page * 2 }),
+    ]);
+    return (a.player?.sets?.nodes || []).concat(b.player?.sets?.nodes || []);
+  }
+}
+
 // Turns one page of walk results into cache tuples. Keeps every
 // completed singles Melee set (any opponent — the cache serves all
 // future pairs involving this player); skips DQs and doubles.
-function collectWalkPage(data, cachedIds, fresh) {
-  const nodes = data.player?.sets?.nodes || [];
+function collectWalkPage(nodes, cachedIds, fresh) {
   let hitKnown = false;
   for (const s of nodes) {
     if (cachedIds.has(String(s.id))) {
@@ -621,7 +643,7 @@ async function walkPlayerSets(playerId, knownTotal) {
     let hitKnown = false;
     for (let page = 1; page <= H2H_MAX_PAGES && !hitKnown; page++) {
       const res = collectWalkPage(
-        await gql(H2H_WALK_QUERY, { pid: playerId, page }),
+        await fetchWalkPage(playerId, page),
         cachedIds,
         fresh
       );
@@ -653,12 +675,10 @@ async function walkPlayerSets(playerId, knownTotal) {
       for (let p = start; p < start + H2H_BATCH && p <= capped; p++)
         batch.push(p);
       const responses = await Promise.all(
-        batch.map((page) =>
-          gql(H2H_WALK_QUERY, { pid: playerId, page })
-        )
+        batch.map((page) => fetchWalkPage(playerId, page))
       );
-      responses.forEach((data) =>
-        collectWalkPage(data, cachedIds, fresh)
+      responses.forEach((nodes) =>
+        collectWalkPage(nodes, cachedIds, fresh)
       );
     }
   }
