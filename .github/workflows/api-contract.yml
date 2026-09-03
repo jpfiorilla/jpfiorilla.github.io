@@ -1,0 +1,24 @@
+# Drift alert for the start.gg API contract the recent-sets overlay depends
+# on. Runs Tuesday afternoons (before the NYC Melee weekly) and on demand;
+# a failure means start.gg changed something the overlay relies on, and
+# GitHub emails the repo owner.
+name: start.gg API contract
+on:
+  schedule:
+    - cron: "0 16 * * 2" # Tuesdays 16:00 UTC (noon ET)
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit tests
+        run: node --test melee/tests/unit.test.js
+      - name: Live API contract
+        run: node --test melee/tests/contract.test.js
+        env:
+          STARTGG_TOKEN: ${{ secrets.STARTGG_TOKEN }}
