@@ -124,6 +124,24 @@ describe("start.gg API contract", { skip: !TOKEN && "no STARTGG_TOKEN" }, () => 
     );
   });
 
+  it("tournament short links resolve to the series' current event", async () => {
+    await sleep(1500);
+    const data = await gql(
+      `query($s: String!) { tournament(slug: $s) { slug events { slug } } }`,
+      { s: "nyse" }
+    );
+    assert.match(
+      data.tournament.slug,
+      /^tournament\/nycmelee-s-stock-exchange-/,
+      "nyse points at a Stock Exchange"
+    );
+    assert.match(
+      data.tournament.events[0].slug,
+      /\/event\/melee-singles$/,
+      "first event is main singles"
+    );
+  });
+
   it("active-set state filter still parses", async () => {
     await sleep(1500);
     const data = await gql(

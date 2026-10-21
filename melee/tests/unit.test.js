@@ -23,6 +23,29 @@ describe("extractSlugFromUrl", () => {
   });
 });
 
+describe("extractShortSlug", () => {
+  it("parses tournament short links in any common form", () => {
+    for (const url of [
+      "https://start.gg/nyse",
+      "https://www.start.gg/nyse",
+      "start.gg/nyse/",
+      "  https://start.gg/nyse?ref=x  ",
+    ]) {
+      assert.equal(core.extractShortSlug(url), "nyse", url);
+    }
+  });
+  it("rejects full tournament and event links", () => {
+    assert.equal(
+      core.extractShortSlug(
+        "https://www.start.gg/tournament/nycmelee-s-stock-exchange-64/event/melee-singles"
+      ),
+      null
+    );
+    assert.equal(core.extractShortSlug("https://start.gg/tournament"), null);
+    assert.equal(core.extractShortSlug("https://example.com/nyse"), null);
+  });
+});
+
 describe("extractPlayerTag", () => {
   it("strips sponsor prefixes", () => {
     assert.equal(core.extractPlayerTag("SHED | Epoodle"), "Epoodle");

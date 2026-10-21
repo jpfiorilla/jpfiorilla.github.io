@@ -98,6 +98,20 @@
     return `${set.id}:${scores.join("-")}`;
   }
 
+  // A tournament short link like https://start.gg/nyse. start.gg moves a
+  // short link to each new tournament in a series (NYC Melee's "nyse"
+  // always points at the current week's Stock Exchange; past weeks lose
+  // it), so configuring one makes the overlay follow the series by itself.
+  function extractShortSlug(url) {
+    const match = (url || "")
+      .trim()
+      .match(
+        /^(?:https?:\/\/)?(?:www\.)?start\.gg\/([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/
+      );
+    if (!match || match[1] === "tournament") return null;
+    return match[1];
+  }
+
   function extractSlugFromUrl(url) {
     const match = url.match(
       /start\.gg\/tournament\/([^\/]+)\/event\/([^\/]+)/
@@ -401,6 +415,7 @@
     formatRound,
     setSignature,
     extractSlugFromUrl,
+    extractShortSlug,
     selectStreamSet,
     pollQuery,
     walkQuery,

@@ -1,0 +1,75 @@
+{
+  "id": "kondo-zeldas-lullaby",
+  "composer": "Koji Kondo",
+  "title": "Zelda's Lullaby",
+  "source": "The Legend of Zelda: Ocarina of Time",
+  "year": 1998,
+  "edition": "piano arrangement, Aaron Grubb",
+  "analyses": [
+    {
+      "date": "2026-09-14",
+      "analyst": "John Fiorilla",
+      "passages": [
+        {
+          "id": "intro",
+          "label": "Intro",
+          "tonic": "C",
+          "mode": "major",
+          "prose": "Tonic pedal throughout. The F#dim is a common-tone neighbour, not a functional chord.",
+          "tags": ["pedal-point", "common-tone-diminished"],
+          "chords": [
+            { "symbol": "C" },
+            { "symbol": "F#dim/C" },
+            { "symbol": "C" },
+            { "symbol": "F#dim/C" }
+          ]
+        },
+        {
+          "id": "a",
+          "label": "A",
+          "tonic": "C",
+          "mode": "major",
+          "prose": "The intro cell answered twice by a descending chromatic bass, B-Bb-A, landing on a D major that reads as V/V and never resolves to G.",
+          "tags": ["pedal-point", "common-tone-diminished", "chromatic-bass-line", "secondary-dominant"],
+          "chords": [
+            { "symbol": "C" },
+            { "symbol": "F#dim/C" },
+            { "symbol": "C" },
+            { "symbol": "F#dim/C" },
+            { "symbol": "G/B" },
+            { "symbol": "Bbdim7" },
+            { "symbol": "Am7" },
+            { "symbol": "D" },
+            { "symbol": "C" },
+            { "symbol": "F#dim/C" },
+            { "symbol": "C" },
+            { "symbol": "F#dim/C" },
+            { "symbol": "G/B" },
+            { "symbol": "Bbdim7" },
+            { "symbol": "Am7" },
+            { "symbol": "D" }
+          ]
+        },
+        {
+          "id": "b",
+          "label": "B",
+          "tonic": "C",
+          "mode": "major",
+          "prose": "Stepwise descent by root, IV-iii-ii-I, repeated with Eb7 interpolated as a tritone substitute for V/ii before the closing ii-V.",
+          "tags": ["descending-sequence", "tritone-substitution"],
+          "chords": [
+            { "symbol": "F^" },
+            { "symbol": "Em7" },
+            { "symbol": "Dm7" },
+            { "symbol": "C^" },
+            { "symbol": "F^" },
+            { "symbol": "Em7" },
+            { "symbol": "Eb7" },
+            { "symbol": "Dm7" },
+            { "symbol": "G7" }
+          ]
+        }
+      ]
+    }
+  ]
+}

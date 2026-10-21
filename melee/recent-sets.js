@@ -1,14 +1,31 @@
 // Bootstrap for the recent-sets overlay: config resolution, the start
 // form, and startup. Load order: core -> api -> views -> THIS.
-const { extractSlugFromUrl } = window.RSCore;
+const { extractSlugFromUrl, extractShortSlug } = window.RSCore;
 
+// Saved config keys. The event URL carries a saved-at time so a concrete
+// event link can expire (see savedEventUrl).
+const SAVED_TOKEN = "startggToken";
+const SAVED_URL = "startggEventUrl";
+const SAVED_URL_AT = "startggEventUrlSavedAt";
+const SAVED_EVENT_MAX_AGE_MS = 20 * 60 * 60 * 1000;
 
-// ?reset=1 clears saved config and shows the form — the escape hatch
-// for a bad saved token, since OBS storage is hard to clear by hand.
+function clearSavedConfig() {
+  localStorage.removeItem(SAVED_TOKEN);
+  localStorage.removeItem(SAVED_URL);
+  localStorage.removeItem(SAVED_URL_AT);
+}
+
+// ?clear=1 is the failsafe: on every load it wipes the saved token and
+// event URL and never saves new ones, so the overlay runs only on what
+// this load is given (URL params or the form). Safe to leave in an OBS
+// source URL permanently; cached match histories are kept.
+const neverSave = params.has("clear");
+if (neverSave) clearSavedConfig();
+
+// ?reset=1 wipes everything (including cached match histories) and shows
+// the form instead of auto-starting.
 if (params.has("reset")) {
-  localStorage.removeItem("startggToken");
-  localStorage.removeItem("startggEventUrl");
-  // Also drop cached player set histories.
+  clearSavedConfig();
   Object.keys(localStorage)
     .filter((k) => k.startsWith("h2hSets:"))
     .forEach((k) => localStorage.removeItem(k));
@@ -18,16 +35,29 @@ let authToken =
   params.get("token") ||
   params.get("t") ||
   window.STARTGG_TOKEN ||
-  localStorage.getItem("startggToken") ||
+  localStorage.getItem(SAVED_TOKEN) ||
   "";
 
 if (authToken) document.getElementById("tokenInput").value = authToken;
+
+// The saved event URL to resume with, if any. A short link (start.gg/nyse)
+// follows the series and never goes stale. A concrete event link only
+// resumes within 20 hours of being saved: a weekly's old event stays
+// valid on start.gg forever, so resuming it next week silently showed
+// last week's results with no way back to the form inside OBS.
+const savedEventUrl = (() => {
+  const url = localStorage.getItem(SAVED_URL);
+  if (!url) return "";
+  if (extractShortSlug(url)) return url;
+  const savedAt = Number(localStorage.getItem(SAVED_URL_AT)) || 0;
+  return Date.now() - savedAt < SAVED_EVENT_MAX_AGE_MS ? url : "";
+})();
 
 let eventUrl =
   params.get("url") ||
   params.get("u") ||
   window.STARTGG_URL ||
-  localStorage.getItem("startggEventUrl") ||
+  savedEventUrl ||
   "";
 
 if (eventUrl) document.getElementById("urlInput").value = eventUrl;
@@ -64,16 +94,16 @@ async function startOverlay(e) {
     return;
   }
 
-  const slug = extractSlugFromUrl(eventUrl);
-  if (!slug) {
+  const shortSlug = extractShortSlug(eventUrl);
+  if (!shortSlug && !extractSlugFromUrl(eventUrl)) {
     eventUrl = "";
     showConfigError(
-      "Couldn't read that URL — paste a direct event link like " +
-        "https://www.start.gg/tournament/.../event/..."
+      "Couldn't read that URL — paste an event link like " +
+        "https://www.start.gg/tournament/.../event/... or a tournament " +
+        "short link like https://start.gg/nyse"
     );
     return;
   }
-  activeSlug = slug;
 
   const startButton = document.querySelector(
     "#configPanel button[type='submit']"
@@ -82,7 +112,32 @@ async function startOverlay(e) {
   startButton.disabled = true;
   startButton.textContent = "Connecting…";
 
-  const result = await fetchData(slug);
+  // A short link is resolved to the series' current event on every start.
+  const resolved = await (async () => {
+    if (!shortSlug) return { slug: extractSlugFromUrl(eventUrl) };
+    try {
+      const slug = await resolveShortSlug(shortSlug);
+      return slug
+        ? { slug }
+        : {
+            error: true,
+            message: `Start.gg error: no tournament found at start.gg/${shortSlug}.`,
+          };
+    } catch (err) {
+      const network = err instanceof TypeError; // fetch failed outright
+      return {
+        error: true,
+        network,
+        message: network
+          ? "Network error contacting Start.gg."
+          : `Start.gg error: ${err.message}`,
+      };
+    }
+  })();
+  const slug = resolved.slug;
+  if (slug) activeSlug = slug;
+
+  const result = resolved.error ? resolved : await fetchData(slug);
 
   startingUp = false;
   startButton.disabled = false;
@@ -108,9 +163,12 @@ async function startOverlay(e) {
   }
 
   // Config verified against start.gg — only now persist it, so a bad
-  // token or URL is never saved.
-  localStorage.setItem("startggToken", authToken);
-  localStorage.setItem("startggEventUrl", eventUrl);
+  // token or URL is never saved. ?clear=1 never saves.
+  if (!neverSave) {
+    localStorage.setItem(SAVED_TOKEN, authToken);
+    localStorage.setItem(SAVED_URL, eventUrl);
+    localStorage.setItem(SAVED_URL_AT, String(Date.now()));
+  }
 
   document.getElementById("configPanel").classList.add("hidden");
   document.getElementById("startggErrorMessage").textContent = "";

@@ -104,8 +104,21 @@ async function gql(query, variables) {
   return json.data;
 }
 
-// The (player.id, user.id) pair for each slot of a set — the main
+// Resolves a tournament short link to the event the overlay should
+// follow: the current tournament's first event (NYC Melee lists main
+// singles first, ahead of the redemption bracket).
+async function resolveShortSlug(shortSlug) {
+  const data = await gql(
+    `query ResolveShortSlug($s: String!) {
+      tournament(slug: $s) { events { slug } }
+    }`,
+    { s: shortSlug }
+  );
+  return data.tournament?.events?.[0]?.slug || null;
+}
 
+// The player ids for each slot of a set — the main polling query stays
+// lean, so these are fetched on demand.
 async function fetchSetPlayers(setId) {
   const data = await gql(
     `query SetPlayers($id: ID!) {

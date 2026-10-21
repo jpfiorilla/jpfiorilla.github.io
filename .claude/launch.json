@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "static-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8321"
+      ],
+      "port": 8321
+    },
+    {
+      "name": "johnf-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8422",
+        "--directory",
+        "/Users/john/code/audiosprite.github.io"
+      ],
+      "port": 8422
+    }
+  ]
+}
