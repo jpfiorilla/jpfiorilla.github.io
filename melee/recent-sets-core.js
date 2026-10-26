@@ -388,6 +388,334 @@
       }));
   }
 
+  // ---- parry.gg ----------------------------------------------------
+  // parry.gg only exposes a gRPC-web API, so this is a minimal protobuf
+  // codec covering just the fields the overlay reads. Field numbers come
+  // from the official parrygg-python package's generated protos; reads
+  // are public (no API key).
+  const PARRY_API_URL = "https://grpcweb.parry.gg/parrygg.services.";
+  const PARRY_MATCH_STATE_COMPLETED = 4;
+  const PARRY_SLOT_STATE_DQ = 3;
+  const PARRY_SLOT_STATE_BYE = 4;
+  const PARRY_BRACKET_TYPE_ROUND_ROBIN = 3;
+
+  // { fieldNumber: [name, type, repeated?] }; type is "varint",
+  // "double", "string", or a nested schema
+  const PARRY_PHASE = {
+    1: ["id", "string"],
+    5: ["bracketType", "varint"],
+    8: ["slug", "string"],
+    9: ["numBrackets", "varint"],
+    10: ["numEntrants", "varint"],
+  };
+  const PARRY_EVENT = {
+    1: ["id", "string"],
+    11: ["phases", PARRY_PHASE, true],
+    13: ["slug", "string"],
+    14: ["entrantCount", "varint"],
+  };
+  // GetEvent is ~0.5 MB on a major but is the only call that fills in
+  // phase sizes (GetTournament/GetPhase leave num_entrants empty); it's
+  // fetched once per event.
+  const PARRY_EVENT_RESPONSE = { 1: ["event", PARRY_EVENT] };
+  const PARRY_EVENT_ENTRANT = {
+    2: ["entrant", { 2: ["users", { 2: ["gamerTag", "string"] }, true] }],
+    3: ["name", "string"],
+    4: ["id", "string"],
+  };
+  const PARRY_MATCH = {
+    1: ["id", "string"],
+    5: ["round", "varint"],
+    6: ["winnersSide", "varint"],
+    7: ["grandFinals", "varint"],
+    13: [
+      "slots",
+      {
+        1: ["slot", "varint"],
+        2: ["seedId", "string"],
+        4: ["score", "double"],
+        5: ["state", "varint"],
+      },
+      true,
+    ],
+    17: ["losersPlacement", "varint"],
+    19: ["endedAt", { 1: ["seconds", "varint"] }],
+  };
+  const PARRY_MATCHES_RESPONSE = {
+    2: [
+      "matches",
+      {
+        1: ["match", PARRY_MATCH],
+        2: [
+          "hierarchy",
+          {
+            1: [
+              "paths",
+              { 1: ["id", "string"], 2: ["type", "varint"] },
+              true,
+            ],
+          },
+        ],
+        5: [
+          "seeds",
+          {
+            1: ["id", "string"],
+            2: ["seed", "varint"],
+            3: ["eventEntrant", PARRY_EVENT_ENTRANT],
+          },
+          true,
+        ],
+        7: ["round", { 3: ["label", "string"] }],
+      },
+      true,
+    ],
+  };
+  const PARRY_PATH_TYPE_PHASE = 2;
+
+  function pbVarint(n) {
+    const bytes = [];
+    while (n > 127) {
+      bytes.push((n & 127) | 128);
+      n = Math.floor(n / 128);
+    }
+    bytes.push(n);
+    return bytes;
+  }
+
+  // Encodes a nested array of [fieldNumber, value] pairs; strings and
+  // nested arrays are length-delimited, numbers are varints.
+  function pbEncode(fields) {
+    const out = [];
+    for (const [field, value] of fields) {
+      if (typeof value === "number") {
+        out.push(...pbVarint(field * 8), ...pbVarint(value));
+      } else {
+        const bytes =
+          typeof value === "string"
+            ? new TextEncoder().encode(value)
+            : pbEncode(value);
+        out.push(
+          ...pbVarint(field * 8 + 2),
+          ...pbVarint(bytes.length),
+          ...bytes
+        );
+      }
+    }
+    return Uint8Array.from(out);
+  }
+
+  // Decodes the fields named in `schema`; everything else is skipped.
+  function pbDecode(bytes, schema) {
+    const out = {};
+    let i = 0;
+    const varint = () => {
+      let result = 0;
+      let shift = 1;
+      let b;
+      do {
+        b = bytes[i++];
+        result += (b & 127) * shift; // no bitwise ops: int64 seconds
+        shift *= 128;
+      } while (b & 128);
+      return result;
+    };
+    while (i < bytes.length) {
+      const tag = varint();
+      const spec = schema[Math.floor(tag / 8)];
+      let value;
+      switch (tag & 7) {
+        case 0:
+          value = varint();
+          break;
+        case 1:
+          value = new DataView(
+            bytes.buffer,
+            bytes.byteOffset + i,
+            8
+          ).getFloat64(0, true);
+          i += 8;
+          break;
+        case 2: {
+          const len = varint();
+          const sub = bytes.subarray(i, i + len);
+          i += len;
+          if (spec?.[1] === "string") value = new TextDecoder().decode(sub);
+          else if (typeof spec?.[1] === "object")
+            value = pbDecode(sub, spec[1]);
+          break;
+        }
+        case 5:
+          i += 4;
+          break;
+        default:
+          throw new Error(`Unsupported protobuf wire type ${tag & 7}`);
+      }
+      if (!spec) continue;
+      const [name, , repeated] = spec;
+      if (repeated) (out[name] = out[name] || []).push(value);
+      else out[name] = value;
+    }
+    return out;
+  }
+
+  // gRPC-web frame: 1 flag byte + 4-byte big-endian length + payload.
+  function grpcWebFrame(message) {
+    const body = new Uint8Array(5 + message.length);
+    new DataView(body.buffer).setUint32(1, message.length);
+    body.set(message, 5);
+    return body;
+  }
+
+  // Splits a gRPC-web response body into the (single, unary) message
+  // payload and the trailer frame's status/message.
+  function parseGrpcWebResponse(bytes) {
+    let payload = null;
+    let status = null;
+    let message = null;
+    for (let i = 0; i + 5 <= bytes.length; ) {
+      const flag = bytes[i];
+      const len = new DataView(
+        bytes.buffer,
+        bytes.byteOffset + i + 1,
+        4
+      ).getUint32(0);
+      const chunk = bytes.subarray(i + 5, i + 5 + len);
+      i += 5 + len;
+      if (flag & 0x80) {
+        // trailers: "grpc-status:0\r\ngrpc-message:..."
+        const text = new TextDecoder().decode(chunk);
+        status = text.match(/grpc-status:\s*(\d+)/)?.[1] ?? status;
+        message = text.match(/grpc-message:\s*(.*)/)?.[1]?.trim() ?? message;
+      } else {
+        payload = chunk;
+      }
+    }
+    return { payload, status, message };
+  }
+
+  function isParryUrl(url) {
+    return /parry\.gg\//.test(url || "");
+  }
+
+  // https://parry.gg/{tournament}/{event}[/{phase}/{bracket}]
+  function extractParrySlugs(url) {
+    const match = (url || "").match(/parry\.gg\/([^\/?#]+)\/([^\/?#]+)/);
+    return match ? { tournamentSlug: match[1], eventSlug: match[2] } : null;
+  }
+
+  // The event's id and phase layout from a GetEvent response.
+  function parryEventInfo(event) {
+    if (!event?.id) return null;
+    return {
+      id: event.id,
+      entrantCount: event.entrantCount || 0,
+      phases: (event.phases || []).map((p, i) => ({
+        id: p.id,
+        phaseOrder: i + 1,
+        numSeeds: p.numEntrants || 0,
+        numBrackets: p.numBrackets || 1,
+        bracketType:
+          p.bracketType === PARRY_BRACKET_TYPE_ROUND_ROBIN
+            ? "ROUND_ROBIN"
+            : "ELIMINATION",
+      })),
+    };
+  }
+
+  // parry.gg numbers each side's rounds from 1 within a single bracket;
+  // formatRound expects start.gg's convention (positive winners rounds
+  // counted from the phase's full size, losers as -|r| where
+  // |r| = 2*log2(P) at Losers Final). Winners rounds already line up.
+  // Losers rounds are derived from the bracket-local losers placement
+  // (LF loser = 3rd, LSF = 4th, LQF = 5th …), shifted by the number of
+  // brackets in the phase (8 pools = 3 more halvings = 6 more rounds).
+  function parryRoundToStartgg(match, phase) {
+    if (match.winnersSide) return match.round || 0;
+    const local = LOSERS_TOP.findIndex(
+      (n) => n >= (match.losersPlacement || Infinity)
+    );
+    if (local < 0 || !phase) return 0;
+    const P = pow2Ceil(phase.numSeeds);
+    if (P < 4) return 0;
+    const dist =
+      local + 2 * Math.log2(Math.max(1, pow2Ceil(phase.numBrackets)));
+    const r = 2 * Math.log2(P) - dist;
+    return r >= 1 ? -r : 0;
+  }
+
+  function parryEntrantName(eventEntrant) {
+    if (!eventEntrant) return "";
+    if (eventEntrant.name) return eventEntrant.name;
+    // Unnamed doubles teams: "Tag A / Tag B"
+    return (eventEntrant.entrant?.users || [])
+      .map((u) => u.gamerTag)
+      .join(" / ");
+  }
+
+  // One parry.gg MatchContext -> the start.gg set shape the views use.
+  function parryMatchToSet(ctx, eventInfo) {
+    const { match, seeds, round, hierarchy } = ctx;
+    const phaseId = hierarchy?.paths?.find(
+      (p) => p.type === PARRY_PATH_TYPE_PHASE
+    )?.id;
+    const phase = eventInfo.phases.find((p) => p.id === phaseId);
+    const seedsById = {};
+    (seeds || []).forEach((s) => (seedsById[s.id] = s));
+    const slots = (match.slots || [])
+      .slice()
+      .sort((a, b) => (a.slot || 0) - (b.slot || 0))
+      .map((slot) => {
+        const seed = seedsById[slot.seedId];
+        return {
+          entrant: {
+            id: seed?.eventEntrant?.id ?? null,
+            name: parryEntrantName(seed?.eventEntrant),
+          },
+          seed: { seedNum: seed?.seed ?? null },
+          standing: {
+            stats: {
+              score: {
+                // start.gg reports a DQ as -1
+                value:
+                  slot.state === PARRY_SLOT_STATE_DQ ? -1 : slot.score || 0,
+              },
+            },
+          },
+        };
+      });
+    return {
+      id: match.id,
+      round: parryRoundToStartgg(match, phase),
+      fullRoundText: round?.label || "",
+      phaseGroup: phase
+        ? {
+            bracketType: phase.bracketType,
+            phase: { numSeeds: phase.numSeeds, phaseOrder: phase.phaseOrder },
+          }
+        : null,
+      slots,
+    };
+  }
+
+  // GetMatches has no sort or limit: drop byes, order by finish time
+  // (most recent first), and convert the first `limit`.
+  function parryRecentSets(matches, eventInfo, limit) {
+    return (matches || [])
+      .filter(
+        ({ match }) =>
+          (match?.slots || []).length === 2 &&
+          match.slots.every(
+            (s) => s.seedId && s.state !== PARRY_SLOT_STATE_BYE
+          )
+      )
+      .sort(
+        (a, b) =>
+          (b.match.endedAt?.seconds || 0) - (a.match.endedAt?.seconds || 0)
+      )
+      .slice(0, limit)
+      .map((ctx) => parryMatchToSet(ctx, eventInfo));
+  }
+
   const api = {
     MELEE_VIDEOGAME_ID,
     H2H_PAGE_SIZE,
@@ -409,6 +737,20 @@
     walkPlayerSets,
     pairDataForOpponent,
     fetchSetDetails,
+    PARRY_API_URL,
+    PARRY_MATCH_STATE_COMPLETED,
+    PARRY_EVENT_RESPONSE,
+    PARRY_MATCHES_RESPONSE,
+    pbEncode,
+    pbDecode,
+    grpcWebFrame,
+    parseGrpcWebResponse,
+    isParryUrl,
+    extractParrySlugs,
+    parryEventInfo,
+    parryRoundToStartgg,
+    parryMatchToSet,
+    parryRecentSets,
   };
 
   if (typeof module !== "undefined" && module.exports) {

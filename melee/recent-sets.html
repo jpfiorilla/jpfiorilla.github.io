@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Start.gg Bracket Overlay</title>
+    <title>Recent Sets Overlay</title>
     <link rel="icon" href="images/favicon_slash.ico" type="image/x-icon" />
     <link rel="stylesheet" href="recent-sets.css" />
   </head>
@@ -14,7 +14,7 @@
         <div id="tokenField">
           <input
             id="tokenInput"
-            placeholder="Paste Start.gg API Token"
+            placeholder="Paste Start.gg API Token (not needed for parry.gg)"
             type="password"
           />
           <a
@@ -31,7 +31,10 @@
           </a>
           <br />
         </div>
-        <input id="urlInput" placeholder="Paste Start.gg event URL" /><br />
+        <input
+          id="urlInput"
+          placeholder="Paste Start.gg or parry.gg event URL"
+        /><br />
         <button type="submit">Start</button>
         <div id="configError"></div>
       </form>

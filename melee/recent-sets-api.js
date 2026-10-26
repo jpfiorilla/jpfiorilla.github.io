@@ -7,11 +7,26 @@ const {
   pairDataForOpponent,
   fetchSetDetails: coreFetchSetDetails,
   H2H_CACHE_VERSION,
+  PARRY_API_URL,
+  PARRY_MATCH_STATE_COMPLETED,
+  PARRY_EVENT_RESPONSE,
+  PARRY_MATCHES_RESPONSE,
+  pbEncode,
+  pbDecode,
+  grpcWebFrame,
+  parseGrpcWebResponse,
+  parryEventInfo,
+  parryRecentSets,
 } = window.RSCore;
 
 const API_URL = "https://api.start.gg/gql/alpha";
 let pollingInterval;
 let activeSlug = null;
+// "startgg" | "parry". parry.gg mode polls activeParrySlugs instead of
+// activeSlug and has no Match History yet.
+let activeProvider = "startgg";
+let activeParrySlugs = null;
+let parryEvent = null; // resolved once per event: id + phase layout
 let setsOffset = 0; // debug: how far past the most recent set to scroll
 const debugState = { fetchCount: 0, lastFetch: "—", lastResult: "—" };
 
@@ -84,6 +99,103 @@ async function fetchData(slug) {
       message: "Network error contacting Start.gg.",
     };
   }
+}
+
+async function parryCall(method, requestFields, responseSchema) {
+  const res = await fetch(PARRY_API_URL + method, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/grpc-web+proto",
+      "X-Grpc-Web": "1",
+    },
+    body: grpcWebFrame(pbEncode(requestFields)),
+  });
+  const { payload, status, message } = parseGrpcWebResponse(
+    new Uint8Array(await res.arrayBuffer())
+  );
+  // Errors with no body come back "trailers-only", i.e. in the headers.
+  const grpcStatus = status ?? res.headers.get("grpc-status");
+  if (!res.ok || (grpcStatus && grpcStatus !== "0")) {
+    const msg = message ?? res.headers.get("grpc-message");
+    const err = new Error(
+      msg ? decodeURIComponent(msg) : `gRPC status ${grpcStatus || res.status}`
+    );
+    err.grpcStatus = grpcStatus;
+    throw err;
+  }
+  return payload ? pbDecode(payload, responseSchema) : {};
+}
+
+// parry.gg counterpart of fetchData — same result shape.
+async function fetchParryData({ tournamentSlug, eventSlug }) {
+  debugState.fetchCount++;
+  debugState.lastFetch = new Date().toLocaleTimeString();
+  let matches;
+  try {
+    if (!parryEvent) {
+      // GetEventRequest.identifier.event_slug_path
+      const { event } = await parryCall(
+        "EventService/GetEvent",
+        [[2, [[2, [[1, tournamentSlug], [2, eventSlug]]]]]],
+        PARRY_EVENT_RESPONSE
+      );
+      parryEvent = parryEventInfo(event);
+      if (!parryEvent) {
+        debugState.lastResult = "error: event not found";
+        return {
+          error: true,
+          message: "parry.gg error: event not found — double-check the URL.",
+        };
+      }
+    }
+    // GetMatchesRequest.filter { event { id }, state: COMPLETED }
+    ({ matches } = await parryCall(
+      "MatchService/GetMatches",
+      [[1, [[7, [[1, parryEvent.id]]], [3, PARRY_MATCH_STATE_COMPLETED]]]],
+      PARRY_MATCHES_RESPONSE
+    ));
+  } catch (err) {
+    // fetch() itself rejects with a TypeError when the network is down
+    const network = err instanceof TypeError;
+    if (err.grpcStatus === "5") {
+      // NOT_FOUND: a bad tournament or event slug
+      debugState.lastResult = "error: event not found";
+      return {
+        error: true,
+        message: "parry.gg error: event not found — double-check the URL.",
+      };
+    }
+    console.error("Error fetching parry.gg data: ", err);
+    debugState.lastResult = `${network ? "network " : ""}error: ${
+      err.message
+    }`;
+    return {
+      error: true,
+      network,
+      message: network
+        ? "Network error contacting parry.gg."
+        : `parry.gg error: ${err.message}`,
+    };
+  }
+
+  const sets = parryRecentSets(
+    matches,
+    parryEvent,
+    Math.min(setsOffset + 5, 50)
+  );
+  debugState.lastResult = `ok (${sets.length} sets)`;
+  return {
+    sets,
+    streamSetId: null,
+    numEntrants: parryEvent.entrantCount,
+    maxPhaseOrder: parryEvent.phases.length,
+  };
+}
+
+function fetchActiveEvent() {
+  return activeProvider === "parry"
+    ? fetchParryData(activeParrySlugs)
+    : fetchData(activeSlug);
 }
 
 async function gql(query, variables) {

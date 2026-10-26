@@ -317,3 +317,173 @@ describe("escapeHtml", () => {
     );
   });
 });
+
+// ---- parry.gg ----------------------------------------------------------
+// Round-label cases come from parry.gg's Altitude Sickness 3 Melee Singles:
+// 235 entrants -> 8 pools -> Top 32 -> Top 8.
+
+describe("parry.gg URL parsing", () => {
+  it("detects parry.gg links", () => {
+    assert.equal(core.isParryUrl("https://parry.gg/as3/melee-singles"), true);
+    assert.equal(
+      core.isParryUrl("https://www.start.gg/tournament/foo/event/bar"),
+      false
+    );
+  });
+  it("takes tournament and event from event, phase, and bracket links", () => {
+    const want = { tournamentSlug: "as3", eventSlug: "melee-singles" };
+    assert.deepEqual(
+      core.extractParrySlugs("https://parry.gg/as3/melee-singles"),
+      want
+    );
+    assert.deepEqual(
+      core.extractParrySlugs("https://parry.gg/as3/melee-singles/top-8/bracket?x=1"),
+      want
+    );
+  });
+  it("rejects a tournament page without an event", () => {
+    assert.equal(core.extractParrySlugs("https://parry.gg/as3"), null);
+  });
+});
+
+describe("protobuf / gRPC-web codec", () => {
+  it("round-trips nested messages, strings, varints, and doubles", () => {
+    // pbEncode only writes varints/strings/messages; decode a hand-built
+    // double alongside them.
+    const msg = core.pbEncode([
+      [1, "abc"],
+      [2, [[1, 300], [2, "é"]]],
+      [2, [[1, 1778362527]]],
+    ]);
+    const dbl = new Uint8Array(9);
+    dbl[0] = (3 << 3) | 1;
+    new DataView(dbl.buffer).setFloat64(1, 2.5, true);
+    const bytes = new Uint8Array([...msg, ...dbl, 0x20, 0x07]); // + unknown field 4
+    const out = core.pbDecode(bytes, {
+      1: ["name", "string"],
+      2: ["items", { 1: ["n", "varint"], 2: ["s", "string"] }, true],
+      3: ["score", "double"],
+    });
+    assert.deepEqual(out, {
+      name: "abc",
+      items: [{ n: 300, s: "é" }, { n: 1778362527 }],
+      score: 2.5,
+    });
+  });
+  it("frames a request and parses data + trailer frames", () => {
+    const payload = core.pbEncode([[1, "x"]]);
+    const framed = core.grpcWebFrame(payload);
+    assert.deepEqual([...framed.subarray(0, 5)], [0, 0, 0, 0, payload.length]);
+    const trailer = new TextEncoder().encode(
+      "grpc-status:3\r\ngrpc-message:bad%20slug\r\n"
+    );
+    const body = new Uint8Array([
+      ...framed,
+      0x80, 0, 0, 0, trailer.length,
+      ...trailer,
+    ]);
+    const res = core.parseGrpcWebResponse(body);
+    assert.deepEqual([...res.payload], [...payload]);
+    assert.equal(res.status, "3");
+    assert.equal(res.message, "bad%20slug");
+  });
+});
+
+describe("parry.gg -> start.gg set conversion", () => {
+  const event = {
+    id: "ev",
+    slug: "melee-singles",
+    entrantCount: 235,
+    phases: [
+      { id: "pools", bracketType: 2, numBrackets: 8, numEntrants: 235 },
+      { id: "t32", bracketType: 2, numBrackets: 1, numEntrants: 32 },
+      { id: "t8", bracketType: 2, numBrackets: 1, numEntrants: 8 },
+    ],
+  };
+  const info = core.parryEventInfo(event);
+  const tInfo = { entrantsCount: 235, bracketSize: 256, maxPhaseOrder: 3 };
+
+  const ctx = (phaseId, match, label, slots) => ({
+    match: { id: "m", ...match, slots: slots || [] },
+    round: { label },
+    hierarchy: { paths: [{ id: phaseId, type: 2 }, { id: "ev", type: 1 }] },
+    seeds: [],
+  });
+
+  it("resolves the event and orders its phases", () => {
+    assert.equal(info.id, "ev");
+    assert.deepEqual(
+      info.phases.map((p) => [p.phaseOrder, p.numSeeds, p.numBrackets]),
+      [[1, 235, 8], [2, 32, 1], [3, 8, 1]]
+    );
+    assert.equal(core.parryEventInfo(undefined), null);
+  });
+
+  const cases = [
+    ["pools", { round: 1, winnersSide: 1 }, "Winners Round 1", "W.T256"],
+    ["pools", { round: 1, losersPlacement: 25 }, "Losers Round 1", "L.T256"],
+    ["t32", { round: 1, winnersSide: 1 }, "Winners Round 1", "W.T32"],
+    ["t32", { round: 1, losersPlacement: 25 }, "Losers Round 1", "L.T32"],
+    ["t32", { round: 4, losersPlacement: 9 }, "Losers Round 4", "L.T12"],
+    ["t8", { round: 1, losersPlacement: 7 }, "Losers Round 1", "L.T8"],
+    ["t8", { round: 4, losersPlacement: 3 }, "Losers Final", "LF"],
+    ["t8", { round: 3, winnersSide: 1, grandFinals: 1 }, "Grand Final", "GF"],
+  ];
+  for (const [phase, match, label, want] of cases) {
+    it(`${phase} ${label} -> ${want}`, () => {
+      const set = core.parryMatchToSet(ctx(phase, match, label), info);
+      assert.equal(core.formatRound(set, tInfo), want);
+    });
+  }
+
+  it("maps names, seeds, scores, and DQs onto start.gg slots", () => {
+    const c = ctx("t8", { round: 1, losersPlacement: 7 }, "Losers Round 1", [
+      { slot: 1, seedId: "b", state: 3 }, // DQ
+      { seedId: "a", score: 2, state: 2 },
+    ]);
+    c.seeds = [
+      { id: "a", seed: 4, eventEntrant: { id: "ea", name: "Team Name" } },
+      {
+        id: "b",
+        seed: 9,
+        eventEntrant: {
+          id: "eb",
+          entrant: { users: [{ gamerTag: "Zamu" }, { gamerTag: "Jmook" }] },
+        },
+      },
+    ];
+    const set = core.parryMatchToSet(c, info);
+    assert.deepEqual(
+      set.slots.map((s) => [
+        s.entrant.id,
+        s.entrant.name,
+        s.seed.seedNum,
+        s.standing.stats.score.value,
+      ]),
+      [
+        ["ea", "Team Name", 4, 2],
+        ["eb", "Zamu / Jmook", 9, -1],
+      ]
+    );
+  });
+
+  it("drops byes and returns the most recently finished first", () => {
+    const m = (id, seconds, slots) => ({
+      match: { id, endedAt: { seconds }, slots },
+      hierarchy: { paths: [] },
+      seeds: [],
+    });
+    const two = [{ seedId: "a" }, { slot: 1, seedId: "b" }];
+    const sets = core.parryRecentSets(
+      [
+        m("old", 100, two),
+        m("bye", 300, [{ seedId: "a" }, { slot: 1, seedId: "b", state: 4 }]),
+        m("new", 200, two),
+        m("empty", 400, [{ seedId: "a" }, { slot: 1 }]),
+      ],
+      info,
+      5
+    );
+    assert.deepEqual(sets.map((s) => s.id), ["new", "old"]);
+  });
+});

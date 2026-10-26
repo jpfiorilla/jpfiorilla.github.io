@@ -1,6 +1,6 @@
 // Bootstrap for the recent-sets overlay: config resolution, the start
 // form, and startup. Load order: core -> api -> views -> THIS.
-const { extractSlugFromUrl } = window.RSCore;
+const { extractSlugFromUrl, isParryUrl, extractParrySlugs } = window.RSCore;
 
 
 // ?reset=1 clears saved config and shows the form — the escape hatch
@@ -52,28 +52,53 @@ async function startOverlay(e) {
   // token or URL isn't ignored in favor of a stale cached value.
   const typedToken = document.getElementById("tokenInput").value.trim();
   if (typedToken) authToken = typedToken;
-  if (!authToken) {
-    showConfigError("Please enter your Start.gg API token.");
-    return;
-  }
 
   const typedUrl = document.getElementById("urlInput").value.trim();
   if (typedUrl) eventUrl = typedUrl;
   if (!eventUrl) {
-    showConfigError("Please enter a Start.gg event URL.");
+    showConfigError("Please enter a Start.gg or parry.gg event URL.");
     return;
   }
 
-  const slug = extractSlugFromUrl(eventUrl);
-  if (!slug) {
-    eventUrl = "";
-    showConfigError(
-      "Couldn't read that URL — paste a direct event link like " +
-        "https://www.start.gg/tournament/.../event/..."
-    );
-    return;
+  if (isParryUrl(eventUrl)) {
+    // parry.gg reads are public — no token needed.
+    const parrySlugs = extractParrySlugs(eventUrl);
+    if (!parrySlugs) {
+      eventUrl = "";
+      showConfigError(
+        "Couldn't read that URL — paste an event link like " +
+          "https://parry.gg/<tournament>/<event>"
+      );
+      return;
+    }
+    // A different event than last time needs its id resolved again.
+    if (
+      activeParrySlugs?.tournamentSlug !== parrySlugs.tournamentSlug ||
+      activeParrySlugs?.eventSlug !== parrySlugs.eventSlug
+    ) {
+      parryEvent = null;
+    }
+    activeProvider = "parry";
+    activeParrySlugs = parrySlugs;
+    activeSlug = `parry.gg/${parrySlugs.tournamentSlug}/${parrySlugs.eventSlug}`;
+  } else {
+    if (!authToken) {
+      showConfigError("Please enter your Start.gg API token.");
+      return;
+    }
+
+    const slug = extractSlugFromUrl(eventUrl);
+    if (!slug) {
+      eventUrl = "";
+      showConfigError(
+        "Couldn't read that URL — paste a direct event link like " +
+          "https://www.start.gg/tournament/.../event/..."
+      );
+      return;
+    }
+    activeProvider = "startgg";
+    activeSlug = slug;
   }
-  activeSlug = slug;
 
   const startButton = document.querySelector(
     "#configPanel button[type='submit']"
@@ -82,7 +107,7 @@ async function startOverlay(e) {
   startButton.disabled = true;
   startButton.textContent = "Connecting…";
 
-  const result = await fetchData(slug);
+  const result = await fetchActiveEvent();
 
   startingUp = false;
   startButton.disabled = false;
@@ -107,9 +132,9 @@ async function startOverlay(e) {
     return;
   }
 
-  // Config verified against start.gg — only now persist it, so a bad
+  // Config verified against the API — only now persist it, so a bad
   // token or URL is never saved.
-  localStorage.setItem("startggToken", authToken);
+  if (authToken) localStorage.setItem("startggToken", authToken);
   localStorage.setItem("startggEventUrl", eventUrl);
 
   document.getElementById("configPanel").classList.add("hidden");
@@ -129,7 +154,7 @@ async function startOverlay(e) {
   if (window.ENABLE_POLLING !== false) {
     if (pollingInterval) clearInterval(pollingInterval);
     pollingInterval = setInterval(async () => {
-      const result = await fetchData(slug);
+      const result = await fetchActiveEvent();
       if (result.error) {
         // Existing results stay up. Only surface poll errors while
         // nothing is rendered yet, so hiccups never print over a
@@ -150,7 +175,11 @@ async function startOverlay(e) {
 // Auto-start when fully configured (query params, config file, or a
 // previously verified setup saved in localStorage). Runs last so all
 // state above is initialized before startOverlay executes.
-if (authToken && eventUrl && !params.has("reset")) {
+if (
+  eventUrl &&
+  (authToken || isParryUrl(eventUrl)) &&
+  !params.has("reset")
+) {
   document.getElementById("configPanel").classList.add("hidden");
   startOverlay();
 }

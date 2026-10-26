@@ -140,6 +140,74 @@ describe("start.gg API contract", { skip: !TOKEN && "no STARTGG_TOKEN" }, () => 
   });
 });
 
+// parry.gg's gRPC-web API is public (no token), so this always runs. Its
+// protobuf field numbers were taken from the parrygg-python package rather
+// than published docs, which makes drift here the likelier failure.
+async function parryCall(method, fields, schema) {
+  const res = await fetch(core.PARRY_API_URL + method, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/grpc-web+proto",
+      "X-Grpc-Web": "1",
+    },
+    body: core.grpcWebFrame(core.pbEncode(fields)),
+  });
+  const { payload, status, message } = core.parseGrpcWebResponse(
+    new Uint8Array(await res.arrayBuffer())
+  );
+  const grpcStatus = status ?? res.headers.get("grpc-status");
+  assert.ok(
+    res.ok && (!grpcStatus || grpcStatus === "0"),
+    `${method}: gRPC ${grpcStatus} ${message ?? res.headers.get("grpc-message")}`
+  );
+  return core.pbDecode(payload, schema);
+}
+
+// Stable historical fixture: Altitude Sickness 3 (completed May 2026).
+const PARRY_TOURNEY_SLUG = "as3";
+const PARRY_EVENT_SLUG = "melee-singles";
+
+describe("parry.gg API contract", () => {
+  let event;
+  before(async () => {
+    const res = await parryCall(
+      "EventService/GetEvent",
+      [[2, [[2, [[1, PARRY_TOURNEY_SLUG], [2, PARRY_EVENT_SLUG]]]]]],
+      core.PARRY_EVENT_RESPONSE
+    );
+    event = core.parryEventInfo(res.event);
+  });
+
+  it("event lookup by slug resolves the event and its phase sizes", () => {
+    assert.ok(event, "event found");
+    assert.equal(event.entrantCount, 235, "entrant count");
+    assert.deepEqual(
+      event.phases.map((p) => [p.numSeeds, p.numBrackets]),
+      [[235, 8], [32, 1], [8, 1]],
+      "pools -> top 32 -> top 8"
+    );
+  });
+
+  it("completed matches decode into renderable sets", async () => {
+    const { matches } = await parryCall(
+      "MatchService/GetMatches",
+      [[1, [[7, [[1, event.id]]], [3, core.PARRY_MATCH_STATE_COMPLETED]]]],
+      core.PARRY_MATCHES_RESPONSE
+    );
+    assert.ok(matches.length > 400, "full event of completed matches");
+    const [gf, lf] = core.parryRecentSets(matches, event, 5);
+    const info = { entrantsCount: 235, bracketSize: 256, maxPhaseOrder: 3 };
+    assert.equal(core.formatRound(gf, info), "GF", "latest set is GF");
+    assert.equal(core.formatRound(lf, info), "LF", "then losers final");
+    assert.deepEqual(
+      gf.slots.map((s) => [s.entrant.name, s.standing.stats.score.value]),
+      [["Joshman", 3], ["Jmook", 1]],
+      "GF names and scores"
+    );
+    assert.ok(gf.slots.every((s) => s.seed.seedNum > 0), "seed numbers");
+  });
+});
+
 if (!TOKEN) {
-  console.log("contract tests skipped: no STARTGG_TOKEN and no local config");
+  console.log("start.gg contract tests skipped: no STARTGG_TOKEN and no local config");
 }

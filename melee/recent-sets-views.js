@@ -207,6 +207,9 @@ function matchHistoryReady() {
 
 function prefetchMatchHistory() {
   if (!h2hTargetSetId) return;
+  // History is looked up on start.gg by set id; parry.gg sets aren't
+  // supported yet, so never fire those lookups (they'd retry every poll).
+  if (activeProvider === "parry") return;
   const id = h2hTargetSetId;
   // Already loaded or in flight for this set; a failed attempt
   // (neither flag set) retries on the next poll.
@@ -318,6 +321,10 @@ function buildHistoryRowHtml(s) {
 // Renders ONLY already-loaded data — never triggers a fetch.
 function renderMatchHistory() {
   const container = document.getElementById("matchHistoryContainer");
+  if (activeProvider === "parry") {
+    container.textContent = "Match history isn't available for parry.gg events yet.";
+    return;
+  }
   if (!h2h.ready) {
     container.textContent = "Match history not loaded yet.";
     return;
@@ -354,7 +361,7 @@ function renderMatchHistory() {
 
 async function refreshNow() {
   if (!activeSlug) return;
-  const result = await fetchData(activeSlug);
+  const result = await fetchActiveEvent();
   if (!result.error) applyFetchResult(result);
   renderDebugPanel();
 }
@@ -464,6 +471,8 @@ function autoPhaseTick() {
     if (matchHistoryReady()) {
       autoPhase.status = "swapping";
       setViewAnimated("history");
+    } else if (activeProvider === "parry") {
+      autoPhase.status = "holding — match history not supported on parry.gg";
     } else if (!h2hTargetSetId) {
       autoPhase.status = "holding — no target set yet";
     } else if (h2h.loading) {
@@ -595,11 +604,13 @@ document
   .getElementById("copyObsLinkBtn")
   .addEventListener("click", async () => {
     const btn = document.getElementById("copyObsLinkBtn");
+    // parry.gg needs no token, so don't put an empty (or stale) one in
+    // the link.
+    const tokenParam =
+      activeProvider === "parry" ? "" : `t=${encodeURIComponent(authToken)}&`;
     const link = `${location.origin}${
       location.pathname
-    }?t=${encodeURIComponent(authToken)}&u=${encodeURIComponent(
-      eventUrl
-    )}`;
+    }?${tokenParam}u=${encodeURIComponent(eventUrl)}`;
     try {
       await navigator.clipboard.writeText(link);
     } catch (err) {
